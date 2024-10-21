@@ -1,0 +1,22 @@
+# --- For-Bot-Working --------- #
+pyrogram
+TgCrypto
+pyromod
+# --- For-Database ------------ #
+pymongo
+dnspython
+# --- For-Web-Response ------- #
+aiohttp
+telethon==1.24.0
+google
+google-generativeai
+requests
+flask
+telegraph
+streamlit
+langchain
+PyPDF2
+chromadb
+faiss-cpu
+langchain_google_genai
+python-dotenv
