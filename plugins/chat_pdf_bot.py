@@ -15,7 +15,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 # Set up the Telegram bot
 API_URL = "https://afrahtafreeh.site/upload_pdf"  # Server URL to upload and process PDF
 
-@Client.on_message(filters.command("chatpdf") & filters.document)
+@StreamBot.on_message(filters.command("chatpdf") & filters.document)
 async def chatpdf_handler(client: Client, message: Message):
     pdf = message.document
     
