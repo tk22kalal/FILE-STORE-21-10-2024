@@ -1,14 +1,14 @@
 import os
+import time
 from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_openai.embeddings import OpenAIEmbeddings  # Updated import
+from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 import requests
 from Adarsh.bot import StreamBot
-
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +34,28 @@ async def document_handler(client: Client, message: Message):
     else:
         await message.reply("Only PDF files are supported. Please upload a PDF.")
 
+async def make_request_with_backoff(url, data, max_retries=5):
+    backoff_time = 1  # Start with 1 second backoff
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=data)
+            response.raise_for_status()  # Raise an error for bad responses
+            return response
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 429:
+                print("Rate limit exceeded, retrying...")
+                time.sleep(backoff_time)  # Wait before retrying
+                backoff_time *= 2  # Exponential backoff
+            else:
+                print("HTTP error occurred:", e)
+                break
+        except Exception as e:
+            print("An error occurred:", e)
+            break
+
+    return None  # If all retries failed
+
 @StreamBot.on_message(filters.command("chatpdf") & filters.reply)
 async def chatpdf_handler(client: Client, message: Message):
     user_id = message.from_user.id
@@ -55,7 +77,7 @@ async def chatpdf_handler(client: Client, message: Message):
             total_pages = len(pages)
             text = ""
             for i, page in enumerate(pages):
-                text += page.extract_text()
+                text += page.extract_text() or ""
                 progress = int((i + 1) / total_pages * 50)  # First 50% for text extraction
                 await message.reply(f"Extracting text... {progress}% complete.")
 
@@ -68,14 +90,15 @@ async def chatpdf_handler(client: Client, message: Message):
         await message.reply("Processing embeddings... 75% complete.")
         
         # Send text to the server and update progress
-        response = requests.post(API_URL, json={"user_id": user_id, "pdf_text": text})
-        if response.status_code == 200:
+        response = await make_request_with_backoff(API_URL, {"user_id": user_id, "pdf_text": text})
+        if response and response.status_code == 200:
             url = f"https://afrahtafreeh.site/chatpdf?user_id={user_id}"
             button = InlineKeyboardMarkup([[InlineKeyboardButton("CLICK HERE", url=url)]])
             await message.reply("Processing complete! 100% done. Click the button below to chat with your PDF!", reply_markup=button)
         else:
             await message.reply("Failed to process PDF. Please try again.")
-            print("Server response error:", response.text)
+            if response:
+                print("Server response error:", response.text)
 
         # Clean up
         os.remove(file_path)
