@@ -24,9 +24,11 @@ dnspython
 apscheduler
 requests
 psutil
+
 langchain
 PyPDF2
 streamlit
 faiss-cpu
 altair
 openai
+langchain-community
