@@ -4,10 +4,11 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai.embeddings import OpenAIEmbeddings  # Updated import
 from langchain.vectorstores import FAISS
 import requests
 from Adarsh.bot import StreamBot
+
 
 # Load environment variables
 load_dotenv()
