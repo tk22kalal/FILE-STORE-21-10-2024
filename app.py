@@ -1,14 +1,14 @@
 from flask import Flask, request, jsonify, render_template
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
-import os
 from dotenv import load_dotenv
+import os
+import requests
 
 app = Flask(__name__)
 
 # Load environment variables
 load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
+rapidapi_key = os.getenv("RAPIDAPI_KEY")
+api_url = "https://chat-gpt26.p.rapidapi.com/"
 
 # Temporary in-memory storage for PDF data
 pdf_data_store = {}
@@ -43,13 +43,34 @@ def answer_question():
         return jsonify({"error": "No PDF data found for this user."}), 404
 
     chunks = pdf_data['chunks']
+    
+    # Prepare the API headers
+    headers = {
+        "x-rapidapi-key": rapidapi_key,
+        "x-rapidapi-host": "chat-gpt26.p.rapidapi.com",
+        "Content-Type": "application/json"
+    }
 
-    # Load LLM with API key and perform question answering
-    llm = OpenAI(api_key=openai_api_key)
-    chain = load_qa_chain(llm, chain_type="stuff")
-    response = chain.run(input_documents=chunks, question=question)
+    # Process each chunk through RapidAPI GPT-3.5 for question answering
+    combined_response = ""
+    for chunk in chunks:
+        payload = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "user", "content": f"{chunk}\n\nQuestion: {question}"}
+            ]
+        }
+        response = requests.post(api_url, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "choices" in data and data["choices"]:
+                answer = data["choices"][0]["message"]["content"]
+                combined_response += answer + "\n\n"
+        else:
+            return jsonify({"error": "Error processing with RapidAPI GPT model."}), response.status_code
 
-    return jsonify({"answer": response})
+    return jsonify({"answer": combined_response.strip()})
 
 if __name__ == '__main__':
     app.run(debug=True)
