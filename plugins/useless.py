@@ -47,7 +47,7 @@ async def stats(bot: Bot, message: Message):
     time = get_readable_time(delta.seconds)
     await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
-@Client.on_message(filters.document.mime_type("application/pdf"))
+@Client.on_message(filters.document & filters.file_extension("pdf"))
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text, and store for the user."""
     file_id = message.document.file_id
