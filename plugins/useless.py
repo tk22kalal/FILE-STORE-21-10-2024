@@ -1,3 +1,5 @@
+
+
 from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
@@ -23,7 +25,7 @@ genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
 inline_button = InlineKeyboardMarkup([[InlineKeyboardButton("🩺 MEDICAL LECTURES", url="https://sites.google.com/view/pavoladdder")]])
 
-# Dictionary to store user conversations, PDF content, and selected topic data
+# Dictionary to store user conversations, PDF content, selected topic, and relevant pages
 user_conversations = {}
 user_pdfs = {}
 user_selected_topic = {}
@@ -39,7 +41,7 @@ async def pdf_handler(client: Client, message: Message):
         pdf_text = ""
         
         try:
-            # Try extracting text directly (for text-based PDFs)
+            # Extract text directly from text-based PDFs
             with open(file, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
                 for page in reader.pages:
@@ -54,8 +56,8 @@ async def pdf_handler(client: Client, message: Message):
             
             user_id = message.from_user.id
             user_pdfs[user_id] = pdf_text
-            await message.reply("PDF processed successfully. Please enter the topic you'd like to explore.")
-        
+            await message.reply("PDF processed successfully. Please reply with the topic you’d like to explore.")
+
         except Exception as e:
             await message.reply("Error processing the PDF. Please try again.")
             print(f"Error processing PDF: {e}")
@@ -64,47 +66,54 @@ async def pdf_handler(client: Client, message: Message):
 
 @Client.on_message(filters.text & filters.reply)
 async def topic_selection(client: Client, message: Message):
-    """Prompt the user for a topic, search for relevant pages, and request a question."""
+    """Handle topic selection and find relevant pages."""
     user_id = message.from_user.id
     if user_id in user_pdfs:
         topic = message.text.strip().lower()
         pdf_content = user_pdfs[user_id]
-
-        # Search for pages relevant to the topic and limit to 10 pages
-        topic_pages = []
-        with io.StringIO(pdf_content) as text_stream:
-            for page_num, content in enumerate(text_stream.getvalue().split("\n"), start=1):
-                if topic in content.lower() and len(topic_pages) < 10:
-                    topic_pages.append((page_num, content))
         
-        if topic_pages:
-            user_selected_topic[user_id] = topic_pages
-            await message.reply("Topic selected. Please ask a specific question related to this topic.")
+        # Search for up to 10 pages relevant to the selected topic
+        relevant_pages = []
+        with io.StringIO(pdf_content) as text_stream:
+            pages = text_stream.getvalue().split("\n")
+            for page_num, content in enumerate(pages, start=1):
+                if topic in content.lower() and len(relevant_pages) < 10:
+                    relevant_pages.append((page_num, content))
+        
+        if relevant_pages:
+            user_selected_topic[user_id] = relevant_pages
+            await message.reply("Topic found. Now please reply with a specific question related to this topic.")
         else:
-            await message.reply("Couldn't find any relevant pages for the selected topic.")
+            await message.reply("Couldn't find relevant pages for the selected topic. Please try a different topic.")
     else:
         await message.reply("Please upload a PDF first.")
 
+def chunk_text(text, chunk_size=200):
+    """Split text into smaller chunks for easier processing."""
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
 @Client.on_message(filters.text & filters.reply)
 async def question_handler(client: Client, message: Message):
-    """Respond to the user's question by generating answers from relevant PDF pages."""
+    """Answer questions about the selected topic using the Gemini API."""
     user_id = message.from_user.id
     if user_id in user_selected_topic:
         question = message.text.strip().lower()
         topic_pages = user_selected_topic[user_id]
+        
+        # Combine content of selected pages for prompt
+        combined_content = "\n".join([content for _, content in topic_pages])
+        text_chunks = chunk_text(combined_content, chunk_size=1000)
 
-        # Prepare content from selected pages for the Gemini prompt
-        prompt_text = "\n".join([content for _, content in topic_pages])
+        # Prepare prompt for the Gemini API
         formatted_prompt = (
-            "Explain in a simple and structured notes format with headings:\n"
-            "• Topic\n"
+            "Provide a clear and structured answer in notes format with headings:\n"
+            "• Main Topic\n"
             "  ✓ Key Points\n"
             "  ● Details\n"
-            "  ○ Examples if applicable\n"
-            f"\n{prompt_text}\n\nQuestion: {question}"
+            "  ○ Examples if relevant\n\n"
+            f"Content:\n{combined_content}\n\nQuestion: {question}"
         )
 
-        # Generate response using the Gemini API
         try:
             model = genai.GenerativeModel(
                 model_name="gemini-pro",
@@ -121,15 +130,17 @@ async def question_handler(client: Client, message: Message):
                     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
                 ]
             )
+            # Generate response from the Gemini API
             response = model.generate_content([formatted_prompt])
 
-            # Send response to the user
+            # Send the structured response back to the user
             await client.send_message(
                 chat_id=message.chat.id,
                 text=response.text,
                 parse_mode=ParseMode.HTML,
                 reply_markup=inline_button
             )
+
         except Exception as e:
             await message.reply("Error generating a response. Please try again.")
             print(f"Error generating response: {e}")
