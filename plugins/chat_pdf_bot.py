@@ -1,17 +1,21 @@
 
+from Adarsh.bot import StreamBot
+
 import logging
 from pyrogram import Client, filters
 import fitz  # PyMuPDF
 import requests  # For API calls
-from Adarsh.bot import StreamBot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Dictionary to store PDF paths for each user
+user_data = {}
+
 # Caploit API Endpoint and Headers
 CAPLOIT_API_ENDPOINT = "https://api.copilot.com"
-CAPLOIT_API_KEY = "3315f09244304402921dbe5e9b9dc3df.83f2378c800a261e"
+CAPLOIT_API_KEY = "YOUR_CAPLOIT_API_KEY"
 HEADERS = {
     "Authorization": f"Bearer {CAPLOIT_API_KEY}",
     "Content-Type": "application/json"
@@ -80,17 +84,17 @@ async def handle_pdf(client, message):
         await message.reply_text("Send /chatpdf to start querying this PDF.")
         
         # Store the file path to keep track of the PDF file for this user
-        client.user_data[message.from_user.id] = pdf_path
+        user_data[message.from_user.id] = pdf_path
     else:
         logger.info("Document is not a PDF.")
 
-@Client.on_message(filters.command("chatpdf") & filters.private)
+@StreamBot.on_message(filters.command("chatpdf") & filters.private)
 async def start_pdf_chat(client, message):
     user_id = message.from_user.id
     logger.info("Received /chatpdf command.")
     
     # Check if PDF file exists for the user
-    pdf_path = client.user_data.get(user_id)
+    pdf_path = user_data.get(user_id)
     if not pdf_path:
         logger.warning("No PDF file found for user.")
         await message.reply_text("Please send a PDF file first.")
@@ -99,7 +103,7 @@ async def start_pdf_chat(client, message):
     await message.reply_text("Please ask your question about the PDF.")
     
     # Listen for the user’s question
-    @Client.on_message(filters.text & filters.private)
+    @StreamBot.on_message(filters.text & filters.private)
     async def handle_question(client, question_message):
         query = question_message.text
         logger.info(f"Received question: {query}")
