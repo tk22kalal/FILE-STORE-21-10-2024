@@ -14,6 +14,9 @@ from google.cloud import vision
 import io
 from database.database import full_userbase
 import PyPDF2
+from PIL import Image
+import PyPDF2
+import pdf2image
 
 # Configure the Google Gemini API Key and Visi
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
