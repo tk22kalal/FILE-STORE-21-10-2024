@@ -47,22 +47,26 @@ async def stats(bot: Bot, message: Message):
     time = get_readable_time(delta.seconds)
     await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
-@Client.on_message(filters.document & filters.file_extension("pdf"))
+@Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text, and store for the user."""
-    file_id = message.document.file_id
-    file = await client.download_media(file_id)
-    
-    # Extract text from the PDF
-    with open(file, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        pdf_text = ""
-        for page in reader.pages:
-            pdf_text += page.extract_text()
-    
-    user_id = message.from_user.id
-    user_pdfs[user_id] = pdf_text
-    await message.reply("PDF found. Reply to this PDF with your question to ask questions related to its content.")
+    # Check if the document is a PDF by looking at the file name
+    if message.document.file_name.endswith(".pdf"):
+        file_id = message.document.file_id
+        file = await client.download_media(file_id)
+        
+        # Extract text from the PDF
+        with open(file, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            pdf_text = ""
+            for page in reader.pages:
+                pdf_text += page.extract_text()
+        
+        user_id = message.from_user.id
+        user_pdfs[user_id] = pdf_text
+        await message.reply("PDF found. Reply to this PDF with your question to ask questions related to its content.")
+    else:
+        await message.reply("Please upload a PDF document.")
 
 @Client.on_message(filters.reply & filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
