@@ -47,7 +47,6 @@ async def stats(bot: Bot, message: Message):
     await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
 
-
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text from both text and image-based PDFs, and store for the user."""
@@ -59,27 +58,29 @@ async def pdf_handler(client: Client, message: Message):
         pdf_text = ""
 
         try:
-            # First, try extracting text directly from PDF (for text-based PDFs)
+            # Process each page: extract text and also convert to image for OCR
             with open(file, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
-                for page in reader.pages:
-                    pdf_text += page.extract_text() or ""
+                num_pages = len(reader.pages)
 
-            # Check if text is missing (indicating image-based content)
-            if not pdf_text.strip():
-                # Convert PDF pages to images and apply OCR
-                images = pdf2image.convert_from_path(file)
-                for page_num, image in enumerate(images, start=1):
-                    text = pytesseract.image_to_string(image)
-                    
-                    # If text extraction confidence is low or blurred text is detected
-                    if len(text.strip()) < 50:
-                        # Use Gemini AI to provide context if OCR fails
+                for page_num in range(num_pages):
+                    page = reader.pages[page_num]
+                    page_text = page.extract_text() or ""
+
+                    # OCR each page image even if some text was already extracted
+                    images = pdf2image.convert_from_path(file, first_page=page_num+1, last_page=page_num+1, dpi=300)
+                    for image in images:
+                        ocr_text = pytesseract.image_to_string(image, lang='eng')
+                        page_text += ocr_text
+
+                    # If both methods fail, generate content with Gemini AI
+                    if len(page_text.strip()) < 50:
                         prompt_text = (
-                            f"The text on page {page_num} is unclear or partially missing. "
+                            f"The text on page {page_num + 1} is unclear or partially missing. "
                             "Based on surrounding context, provide an explanation in simple, structured notes format."
                         )
                         
+                        # Use Gemini AI as a fallback
                         model = genai.GenerativeModel(
                             model_name="gemini-pro",
                             generation_config={
@@ -90,10 +91,12 @@ async def pdf_handler(client: Client, message: Message):
                             }
                         )
                         response = model.generate_content([prompt_text])
-                        text += response.text
-                    
-                    pdf_text += text
+                        page_text += response.text
 
+                    # Add extracted text for the page
+                    pdf_text += f"Page {page_num + 1}:\n{page_text}\n\n"
+
+            # Store the extracted PDF text for the user
             user_id = message.from_user.id
             user_pdfs[user_id] = pdf_text
             await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content.")
@@ -103,6 +106,7 @@ async def pdf_handler(client: Client, message: Message):
             print(f"Error processing PDF: {e}")
     else:
         await message.reply("Please upload a PDF document.")
+
 
 def chunk_text(text, chunk_size=200):
     """Split text into chunks of a specified size."""
