@@ -132,3 +132,4 @@ cython_debug/
 # Google Cloud service account JSON files
 plugins/gen-lang-client-0707503202-a7cfbe26de4e.json
 plugins/security_key.json
+plugins/gen-lang-client-0707503202-21d07fd84f57.json
