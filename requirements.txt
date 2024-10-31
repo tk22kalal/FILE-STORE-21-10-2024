@@ -21,3 +21,9 @@ google-generativeai  # For interacting with Google Gemini model
 PyPDF2  # For PDF text extraction
 nltk  # For sentence tokenization
 requests  # For handling any HTTP requests (may be used in other parts of the bot)
+pyrogram
+pytesseract
+pillow
+PyPDF2
+pdf2image
+google-generativeai  # Ensure compatibility with your current AI setup
