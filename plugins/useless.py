@@ -129,8 +129,8 @@ async def pdf_question_handler(client: Client, message: Message):
         
         # Formatting the prompt for AI generation
         formatted_prompt = (
-            "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats if needed:\n"
-            "• Main Topic\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
+            "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs(dont use * , -):\n"
+            "• Main Topic(always bold)\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
