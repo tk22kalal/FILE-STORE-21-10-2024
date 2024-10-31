@@ -129,13 +129,13 @@ async def pdf_question_handler(client: Client, message: Message):
         
         # Formatting the prompt for AI generation
         formatted_prompt = (
-            "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format:\n"
+            "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats if needed:\n"
             "• Main Topic\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
         # Generate content with Gemini AI
-        generation_config = {"temperature": 1, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
+        generation_config = {"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
         model = genai.GenerativeModel(
             model_name="gemini-pro", generation_config=generation_config,
             safety_settings=[
