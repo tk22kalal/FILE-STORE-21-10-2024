@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "gen-lang-client-0707503202",
+  "private_key_id": "a7cfbe26de4ed7334ceb6f78a55e70e1aaba0980",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDtcjwj8TPDtcbP\n3c4Fb6CUZJDhrp7vsqFSENkYM52MQSiPxwkhvM3MPTUVVP/WlQpAyAvdSpT7TlHA\nvh02xDHOLGS9NHlvRx0nXv3RWGS6ziTafFPQqRULbNY7OiEwUQC7Zuxva5+T/KjB\nBaoziaVMNCBjMOPm/CKwN+oaEcZpuSu8I2y8A1TukkKG7if5q8jzhNQEZGwcP5PZ\np81W3Dh/jzc4bQuPO9nP/SvTUp9ypHwI6DUp1IVhOU6ZrViLxqESjkHU8KftpgCW\neF9rcc67Em5neQiFRhjcB8lZ0jbvsgNod0FmpfbQLFKUmLgHMj5VFdaR2X8MwcTq\nAylasM9tAgMBAAECggEATDpZu1Iyg5iGUHJNMyqQe0NDzegA50PKDW4SO/ZKFF5Q\ntsO3l0ilKvXVZllI3usvBPgT8wGADaOplD6UY2Id+SoAV0uS1poWbm7M/lmp0Nzg\nMPIr+Ddn5aiVqCLzx66hlQgoTGbZLqm0xW7borsEQZAUe7OU3rFAM6FnuuHM+GBX\nJTLxdkAOS1VlFPaKsTOh2k6LiUVQ3+UVYYaRbRfcdSZArNOuxyiHCxFznk9Ewb6P\naQg7SqKqJj9VwXb9W5d/tTMpSyg8cQR8UYLrmiqeYgYuyKHkud3u+ViYQPqgU+fx\nNGLyP8yL4a4FULixkjtKFdP48IbLON+KEfV5A3dZswKBgQD8UzSqO6MBwBFI6YvK\n+bA17hqaHFLzoiC8fDY8P7TRIGnvyEimStDaNDMgih4+ahgMw1JUDFB+bmQDzLBl\nmSHJCs243xsx03lSFKdAHn2mF5QWmeeRZnn89Odcz8OKGz9lxD45bvoxIqF1kpRV\njTtAgzzGyD7cD8EdkUZ7X5gFbwKBgQDw5424pkKFFp9jk/V8XXGwxYrckKoGrVWZ\nIGAHG6cF32VCJOlkxsJxyb19rrVAUhd6V9wFhbgxNSo77aSVhJuqddJawY4wQEjI\n4u+IpYNKpTPIRr/J/yW/41wluqZp1CJYSECROiBzehx5EQHqzAM3T2YB/U6wjAqj\nTQmRI2ji4wKBgFKgmK1qTA3lrINY30s/iqGOcC2pOszHebrfXg9KuVaGK8q2pnu2\nIkBiOZ/dOtwrd+auC4a0ZaORWLUZ0WXjyHmCTS3N+aTOYHstgjtwAKtkKz1fdsJZ\ncXcRZ7Yv3xOZqqATrGC4Y7u1YHQU5PhDAHU2xK8/ob4EdrPM/+ykuC6HAoGBAJ5V\ncl5EWEAk6EmIe7ZrrEek7mmdY0LUNghYsQS69gH0HBdnL0cfI7mqALNUWqiVy/yL\nNn8irjcZXFLbFGt5Jt7YZZNk19F6ztvJ2+mR70LmZaxiY7edzO/bvTrG/I1d8dzY\nUCejbqS3Q3OG7B2oTQzTUJZKKKf8wxkljv4nqc5FAoGARV2GZHj7sDYZDqzI4T6h\nM3jRfIrCXcjjqiyamW5ID1kgoQFTdqpLYun/ZaBq8aYeMBnn8iW2ZC5ZK7mE8pPI\nv57z94nyRWhZVoCcvwWQCBmWdrPpSQzHk/uhRsJt7F3yMzxsVtOwnxlCAr4xiqap\nAZVlWRvygq5KylU19uCHhsc=\n-----END PRIVATE KEY-----\n",
+  "client_email": "mynextpulse@gen-lang-client-0707503202.iam.gserviceaccount.com",
+  "client_id": "111776428794433338697",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mynextpulse%40gen-lang-client-0707503202.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
