@@ -14,7 +14,7 @@ user_data = {}
 
 # Caploit API Endpoint and Headers
 CAPLOIT_API_ENDPOINT = "https://api.copilot.com"
-CAPLOIT_API_KEY = "3315f09244304402921dbe5e9b9dc3df.83f2378c800a261e"
+CAPLOIT_API_KEY = "9763e5ca39794b5e89f8887080076cf5.da68a143dd609750"
 HEADERS = {
     "Authorization": f"Bearer {CAPLOIT_API_KEY}",
     "Content-Type": "application/json"
