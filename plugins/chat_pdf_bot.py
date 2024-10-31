@@ -3,6 +3,7 @@ import logging
 from pyrogram import Client, filters
 import fitz  # PyMuPDF
 import requests  # For API calls
+from Adarsh.bot import StreamBot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -65,7 +66,7 @@ def query_caploit_api(query_text):
         logger.error(f"Exception occurred while querying Caploit API: {e}")
         return "Error: An exception occurred."
 
-@Client.on_message(filters.document & filters.private)
+@StreamBot.on_message(filters.document & filters.private)
 async def handle_pdf(client, message):
     logger.info("Received document.")
     if message.document.mime_type == "application/pdf":
