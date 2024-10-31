@@ -15,7 +15,6 @@ import PyPDF2
 import io
 import pytesseract
 from PIL import Image
-import PyPDF2
 import pdf2image
 
 # Configure the Google Gemini API Key
@@ -46,58 +45,49 @@ async def stats(bot: Bot, message: Message):
     time = get_readable_time(delta.seconds)
     await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
-
-
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
-    """Handle PDF uploads, extract text from both text and image-based PDFs, and store for the user."""
+    """Handle PDF uploads and prepare it for efficient topic-based querying."""
     if message.document.file_name.endswith(".pdf"):
         file_id = message.document.file_id
         file = await client.download_media(file_id)
         
         # Initialize empty text variable
         pdf_text = ""
+        page_texts = []
 
         try:
             # First, try extracting text directly from PDF (for text-based PDFs)
             with open(file, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
                 for page in reader.pages:
-                    pdf_text += page.extract_text() or ""
+                    text = page.extract_text() or ""
+                    page_texts.append(text)
+                    pdf_text += text
 
             # Check if text is missing (indicating image-based content)
             if not pdf_text.strip():
-                # Convert PDF pages to images and apply OCR
                 images = pdf2image.convert_from_path(file)
                 for page_num, image in enumerate(images, start=1):
                     text = pytesseract.image_to_string(image)
                     
-                    # If text extraction confidence is low or blurred text is detected
+                    # Handle low-confidence text extraction
                     if len(text.strip()) < 50:
-                        # Use Gemini AI to provide context if OCR fails
                         prompt_text = (
                             f"The text on page {page_num} is unclear or partially missing. "
-                            "Based on surrounding context, provide an explanation in simple, structured notes format."
+                            "Provide an explanation in simple, structured notes format."
                         )
-                        
-                        model = genai.GenerativeModel(
+                        response = genai.GenerativeModel(
                             model_name="gemini-pro",
-                            generation_config={
-                                "temperature": 0.8,
-                                "top_p": 1,
-                                "top_k": 1,
-                                "max_output_tokens": 800,
-                            }
-                        )
-                        response = model.generate_content([prompt_text])
+                            generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 800}
+                        ).generate_content([prompt_text])
                         text += response.text
                     
-                    pdf_text += text
+                    page_texts.append(text)
 
             user_id = message.from_user.id
-            user_pdfs[user_id] = pdf_text
-            await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content.")
-
+            user_pdfs[user_id] = page_texts
+            await message.reply("PDF processed successfully. Select your topic to continue.")
         except Exception as e:
             await message.reply("There was an error processing the PDF. Please try again.")
             print(f"Error processing PDF: {e}")
@@ -110,67 +100,43 @@ def chunk_text(text, chunk_size=200):
 
 @Client.on_message(filters.reply & filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
-    """Respond to questions about a PDF by finding relevant content and formatting as requested."""
+    """Ask users to choose a topic, process relevant pages, and handle user questions."""
     user_id = message.from_user.id
     if user_id in user_pdfs:
         question = message.text.lower()
-        pdf_content = user_pdfs[user_id]
+        page_texts = user_pdfs[user_id]
         
-        # Determine if the question is about a specific page number
-        if "page number" in question or "which page" in question:
-            topic = question.replace("page number", "").replace("which page", "").strip()
-            page_num = None
-            with io.StringIO(pdf_content) as text_stream:
-                for page, content in enumerate(text_stream.getvalue().split("\n"), start=1):
-                    if topic.lower() in content.lower():
-                        page_num = page
-                        break
-            if page_num:
-                await message.reply(f"The topic '{topic}' is located on page {page_num}.")
-            else:
-                await message.reply(f"Couldn't find the topic '{topic}' in the PDF.")
+        # Find pages with relevant content for the specified topic
+        selected_pages = [i for i, page in enumerate(page_texts, start=1) if any(keyword in page.lower() for keyword in question.split())]
+        
+        if not selected_pages:
+            await message.reply("Couldn't find relevant pages. Try another question.")
             return
         
-        # Chunk the PDF text for processing and response
-        chunks = chunk_text(pdf_content)
-        relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
-        prompt_text = " ".join(relevant_chunks)
+        # Limit to the first 10 relevant pages to optimize load
+        relevant_text = "".join(page_texts[i - 1] for i in selected_pages[:10])
+        prompt_text = f"• Main Topic\n  ✓ Key Points\n  ● Details\n  ○ Examples\n\n{relevant_text}\n\nQuestion: {question}"
 
-        # Format the response as structured notes with various symbols
-        formatted_prompt = (
-            "Explain in simple language, in notes format with the following structure:\n"
-            "• Main Topic\n"
-            "  ✓ Key Points\n"
-            "  ● Details\n"
-            "  ○ Examples if needed\n"
-            f"\n{prompt_text}\n\nQuestion: {question}"
-        )
-
-        # Generate response using Gemini model
-        generation_config = {
-            "temperature": 1,
-            "top_p": 1,
-            "top_k": 1,
-            "max_output_tokens": 1000,
-        }
-
-        model = genai.GenerativeModel(
+        # Generate response using Gemini
+        response = genai.GenerativeModel(
             model_name="gemini-pro",
-            generation_config=generation_config,
+            generation_config={
+                "temperature": 1,
+                "top_p": 1,
+                "top_k": 1,
+                "max_output_tokens": 1000
+            },
             safety_settings=[
                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
                 {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
                 {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
                 {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
             ]
-        )
-
-        response = model.generate_content([formatted_prompt])
-        lazy_response = response.text
-
+        ).generate_content([prompt_text])
+        
         await client.send_message(
             chat_id=message.chat.id,
-            text=lazy_response,
+            text=response.text,
             parse_mode=ParseMode.HTML,
             reply_markup=inline_button
         )
@@ -187,45 +153,35 @@ async def lazy_answer(client: Client, message: Message):
                 if message.text.lower().strip() == "/newchat" or message.text.strip() == 'newchat⚡️':
                     user_conversations.pop(user_id, None)
                     user_pdfs.pop(user_id, None)  # Clear any stored PDF data
-                    response_text = "New chat started. Ask me anything!"
-                    await message.reply(response_text)
+                    await message.reply("New chat started. Ask me anything!")
                     return
 
                 user_messages = user_conversations.get(user_id, [])
                 user_messages.append(message.text)
                 prompt = "\n".join(user_messages)
 
-                generation_config = {
-                    "temperature": 1,
-                    "top_p": 1,
-                    "top_k": 1,
-                    "max_output_tokens": 1000,
-                }
-
-                safety_settings = [
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
-                ]
-
-                model = genai.GenerativeModel(
+                response = genai.GenerativeModel(
                     model_name="gemini-pro",
-                    generation_config=generation_config,
-                    safety_settings=safety_settings
-                )
-                prompt_parts = [prompt]
-
-                response = model.generate_content(prompt_parts)
+                    generation_config={
+                        "temperature": 1,
+                        "top_p": 1,
+                        "top_k": 1,
+                        "max_output_tokens": 1000
+                    },
+                    safety_settings=[
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
+                    ]
+                ).generate_content([prompt])
 
                 users = await full_userbase()
                 footer_credit = "<b>ADMIN ID:</b> - @talktomembbs_bot\n<b>Total Users:</b> {}".format(len(users))
 
-                lazy_response = response.text
-
                 await client.send_message(
                     chat_id=message.chat.id,
-                    text=f"{lazy_response}\n{footer_credit}",
+                    text=f"{response.text}\n{footer_credit}",
                     parse_mode=ParseMode.HTML,
                     reply_markup=inline_button
                 )
