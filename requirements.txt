@@ -15,3 +15,9 @@ google-generativeai
 requests
 flask
 telegraph
+
+  # Version may vary; use the latest compatible version for your Pyrogram code
+google-generativeai  # For interacting with Google Gemini model
+PyPDF2  # For PDF text extraction
+nltk  # For sentence tokenization
+requests  # For handling any HTTP requests (may be used in other parts of the bot)
