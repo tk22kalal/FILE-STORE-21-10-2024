@@ -27,6 +27,7 @@ inline_button = InlineKeyboardMarkup([[InlineKeyboardButton("🩺 MEDICAL LECTUR
 
 user_conversations = {}
 user_pdfs = {}
+user_context = {}  # Track conversation context for follow-up questions
 
 @Bot.on_message(filters.command('clear') & filters.user(ADMINS))
 async def clear(bot: Bot, message: Message):
@@ -100,33 +101,40 @@ def chunk_text(text, chunk_size=200):
 async def pdf_question_handler(client: Client, message: Message):
     user_id = message.from_user.id
     if user_id in user_pdfs:
-        question = message.text.lower()
         pdf_content = user_pdfs[user_id]
+        
+        if message.reply_to_message:
+            # If user is replying to an answer, continue from the context
+            if message.reply_to_message.from_user.is_bot:
+                previous_answer = user_context.get(user_id, "")
+                question = message.text
 
-        if "page number" in question or "which page" in question:
-            topic = question.replace("page number", "").replace("which page", "").strip()
-            page_num = None
-            with io.StringIO(pdf_content) as text_stream:
-                for page, content in enumerate(text_stream.getvalue().split("\n"), start=1):
-                    if topic.lower() in content.lower():
-                        page_num = page
-                        break
-            if page_num:
-                await message.reply(f"The topic '{topic}' is located on page {page_num}.")
+                prompt_text = f"{previous_answer}\n\nFollow-up Question: {question}"
             else:
-                await message.reply(f"Couldn't find the topic '{topic}' in the PDF.")
-            return
+                # If replying to PDF or asking first question without reply, process PDF
+                question = message.text.lower()
+                user_context[user_id] = pdf_content  # Set PDF as the initial context
 
-        chunks = chunk_text(pdf_content)
-        relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
-        prompt_text = " ".join(relevant_chunks)
-
+                chunks = chunk_text(pdf_content)
+                relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
+                prompt_text = " ".join(relevant_chunks)
+        else:
+            # Direct questions about the PDF
+            question = message.text.lower()
+            user_context[user_id] = pdf_content  # Set PDF as the initial context
+            
+            chunks = chunk_text(pdf_content)
+            relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
+            prompt_text = " ".join(relevant_chunks)
+        
+        # Formatting the prompt for AI generation
         formatted_prompt = (
             "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format:\n"
             "• Main Topic\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
+        # Generate content with Gemini AI
         generation_config = {"temperature": 1, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
         model = genai.GenerativeModel(
             model_name="gemini-pro", generation_config=generation_config,
@@ -140,6 +148,9 @@ async def pdf_question_handler(client: Client, message: Message):
 
         response = model.generate_content([formatted_prompt])
         formatted_response = response.text.replace("**", "<b>").replace("**", "</b>")
+
+        # Store this response in the context for follow-up questions
+        user_context[user_id] = formatted_response
 
         await client.send_message(
             chat_id=message.chat.id,
