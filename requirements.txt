@@ -34,3 +34,4 @@ openai
 langchain-community
 tiktoken
 langchain-openai
+PyMuPDF
