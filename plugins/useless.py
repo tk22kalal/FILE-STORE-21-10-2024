@@ -69,42 +69,62 @@ def chunk_text(text, chunk_size=200):
 
 @Client.on_message(filters.reply & filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
-    """Respond to questions about a PDF by finding relevant content."""
+    """Respond to questions about a PDF by finding relevant content and formatting as requested."""
     user_id = message.from_user.id
     if user_id in user_pdfs:
-        question = message.text
+        question = message.text.lower()
         pdf_content = user_pdfs[user_id]
-
-        # Create chunks from the PDF text
+        
+        # Determine if the question is about a specific page number
+        if "page number" in question or "which page" in question:
+            topic = question.replace("page number", "").replace("which page", "").strip()
+            page_num = None
+            with io.StringIO(pdf_content) as text_stream:
+                for page, content in enumerate(text_stream.getvalue().split("\n"), start=1):
+                    if topic.lower() in content.lower():
+                        page_num = page
+                        break
+            if page_num:
+                await message.reply(f"The topic '{topic}' is located on page {page_num}.")
+            else:
+                await message.reply(f"Couldn't find the topic '{topic}' in the PDF.")
+            return
+        
+        # Chunk the PDF text for processing and response
         chunks = chunk_text(pdf_content)
-
-        # Find relevant chunks based on keywords
-        relevant_chunks = [chunk for chunk in chunks if any(keyword.lower() in chunk.lower() for keyword in question.split())]
+        relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
         prompt_text = " ".join(relevant_chunks)
 
-        # Set up the model configuration
+        # Format the response as structured notes with various symbols
+        formatted_prompt = (
+            "Explain in simple language, in notes format with the following structure:\n"
+            "• Main Topic\n"
+            "  ✓ Key Points\n"
+            "  ● Details\n"
+            "  ○ Examples if needed\n"
+            f"\n{prompt_text}\n\nQuestion: {question}"
+        )
+
+        # Generate response using Gemini model
         generation_config = {
             "temperature": 1,
             "top_p": 1,
             "top_k": 1,
             "max_output_tokens": 1000,
         }
-        
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
-        ]
-        
+
         model = genai.GenerativeModel(
             model_name="gemini-pro",
             generation_config=generation_config,
-            safety_settings=safety_settings
+            safety_settings=[
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
+            ]
         )
 
-        # Generate response using Gemini model
-        response = model.generate_content([prompt_text + "\n\nQuestion: " + question])
+        response = model.generate_content([formatted_prompt])
         lazy_response = response.text
 
         await client.send_message(
