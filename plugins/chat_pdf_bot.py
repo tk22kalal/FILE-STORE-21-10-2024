@@ -1,4 +1,3 @@
-
 from Adarsh.bot import StreamBot
 
 import logging
@@ -17,7 +16,7 @@ user_data = {}
 CAPLOIT_API_ENDPOINT = "https://api.copilot.com"
 CAPLOIT_API_KEY = "3315f09244304402921dbe5e9b9dc3df.83f2378c800a261e"
 HEADERS = {
-    "Authorization": f"Bearer {3315f09244304402921dbe5e9b9dc3df.83f2378c800a261e}",
+    "Authorization": f"Bearer {CAPLOIT_API_KEY}",
     "Content-Type": "application/json"
 }
 
