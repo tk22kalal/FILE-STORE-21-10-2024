@@ -15,10 +15,9 @@ import io
 from database.database import full_userbase
 import PyPDF2
 from PIL import Image
-import PyPDF2
 import pdf2image
 
-# Configure the Google Gemini API Key and Visi
+# Configure the Google Gemini API Key and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
@@ -86,7 +85,7 @@ async def pdf_handler(client: Client, message: Message):
 
             user_id = message.from_user.id
             user_pdfs[user_id] = pdf_text
-            await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content.")
+            await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content or ask directly without replying for follow-up questions.")
 
         except Exception as e:
             await message.reply("Error processing the PDF. Please try again.")
@@ -97,7 +96,7 @@ async def pdf_handler(client: Client, message: Message):
 def chunk_text(text, chunk_size=200):
     return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
-@Client.on_message(filters.reply & filters.text & filters.private)
+@Client.on_message(filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
     user_id = message.from_user.id
     if user_id in user_pdfs:
@@ -148,4 +147,4 @@ async def pdf_question_handler(client: Client, message: Message):
             reply_markup=inline_button
         )
     else:
-        await message.reply("Please upload a PDF first and ask your question by replying to it.")
+        await message.reply("Please upload a PDF first to ask questions about its content.")
