@@ -27,3 +27,10 @@ pillow
 PyPDF2
 pdf2image
 google-generativeai  # Ensure compatibility with your current AI setup
+pyrogram
+google-cloud-vision
+google-generativeai
+pillow
+PyPDF2
+pdf2image
+requests
