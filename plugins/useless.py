@@ -138,7 +138,7 @@ async def pdf_question_handler(client: Client, message: Message):
 
         # Format the response as structured notes with various symbols
         formatted_prompt = (
-            "Explain in simple language, in notes format with the following structure if needed:\n"
+            "Explain in simple language, Main headings subheadings should be strong bold(do not include symbols like ** or #), and in notes format with the following structures if needed:\n"
             "• Main Topic\n"
             "  ● Key Points\n"
             "  ○ Details\n"
