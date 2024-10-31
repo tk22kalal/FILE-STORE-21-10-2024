@@ -1,105 +1,95 @@
-import os
-import time
-from dotenv import load_dotenv
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
-from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import FAISS
-import requests
-from Adarsh.bot import StreamBot
+import fitz  # PyMuPDF
+import requests  # For API calls
+from langchain import LangChain
 
-# Load environment variables
-load_dotenv()
-api_key = os.getenv("RAPIDAPI_KEY")  # Store your RapidAPI key here
-API_URL = "https://chat-gpt26.p.rapidapi.com/"
+# Initialize LangChain
+langchain_client = LangChain(api_key="5fddb1d96dd84b47a8af1c5854e8b078.659333c9f6ac62c1")
 
-# Dictionary to store file paths for users
-user_files = {}
+# Caploit API Endpoint and Headers
+CAPLOIT_API_ENDPOINT = "https://api.copilot.com"
+CAPLOIT_API_KEY = "5fddb1d96dd84b47a8af1c5854e8b078.659333c9f6ac62c1"
+HEADERS = {
+    "Authorization": f"Bearer {CAPLOIT_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-@StreamBot.on_message(filters.document)
-async def document_handler(client: Client, message: Message):
-    pdf = message.document
-    if pdf and pdf.file_name.endswith('.pdf'):
-        try:
-            # Download the PDF file and store the path
-            file_path = await client.download_media(pdf)
-            user_files[message.from_user.id] = file_path  # Store file path
-            await message.reply("PDF received! Now reply to this message with /chatpdf to start processing.")
-            print("PDF received and stored for user:", message.from_user.id)
-        except Exception as e:
-            print("Error downloading PDF:", e)
-            await message.reply("Failed to download PDF. Please try again.")
+# Function to extract text by page from PDF
+def extract_pdf_text_by_page(pdf_path):
+    text_by_page = {}
+    with fitz.open(pdf_path) as pdf:
+        for page_num in range(len(pdf)):
+            text_by_page[page_num] = pdf[page_num].get_text()
+    return text_by_page
+
+# Function to find relevant pages based on query
+def find_relevant_pages(query, text_by_page):
+    relevant_pages = []
+    for page_num, text in text_by_page.items():
+        if query.lower() in text.lower():
+            relevant_pages.append(page_num)
+    return relevant_pages
+
+# Function to create text chunks
+def create_text_chunks(text, chunk_size=500):
+    words = text.split()
+    chunks = [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size)]
+    return chunks
+
+# Function to query Caploit API
+def query_caploit_api(query_text):
+    response = requests.post(
+        CAPLOIT_API_ENDPOINT,
+        headers=HEADERS,
+        json={"query": query_text}
+    )
+    if response.status_code == 200:
+        return response.json().get("answer", "")
     else:
-        await message.reply("Only PDF files are supported. Please upload a PDF.")
+        return "Error: Could not retrieve answer from Caploit API."
 
-@StreamBot.on_message(filters.command("chatpdf") & filters.reply)
-async def chatpdf_handler(client: Client, message: Message):
-    user_id = message.from_user.id
-    file_path = user_files.get(user_id)
-
-    # Ensure the file exists for the user
-    if not file_path:
-        await message.reply("No PDF found. Please upload a PDF and then reply with /chatpdf.")
-        return
-
-    try:
-        # Start processing with progress messages
-        await message.reply("Starting PDF processing... 0% complete.")
+@Client.on_message(filters.document & filters.private)
+async def handle_pdf(client, message):
+    if message.document.mime_type == "application/pdf":
+        # Download PDF
+        pdf_path = await message.download()
+        # Reply to prompt chat mode
+        await message.reply_text("Send /chatpdf to start querying this PDF.")
         
-        # Load and extract PDF text with progress updates
-        with open(file_path, "rb") as f:
-            pdf_reader = PdfReader(f)
-            pages = pdf_reader.pages
-            total_pages = len(pages)
-            text = ""
-            for i, page in enumerate(pages):
-                text += page.extract_text() or ""
-                progress = int((i + 1) / total_pages * 50)  # First 50% for text extraction
-                await message.reply(f"Extracting text... {progress}% complete.")
+        # Store the file path to keep track of the PDF file for this user
+        client.user_data[message.from_user.id] = pdf_path
 
-        # Process PDF text into chunks
-        text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=200)
-        chunks = text_splitter.split_text(text)
-
-        # Prepare a response using the RapidAPI GPT model
-        await message.reply("Processing with RapidAPI GPT model... 75% complete.")
-        headers = {
-            "x-rapidapi-key": api_key,
-            "x-rapidapi-host": "chat-gpt26.p.rapidapi.com",
-            "Content-Type": "application/json"
-        }
-
-        # Generate responses based on PDF content
-        responses = []
-        for chunk in chunks:
-            payload = {
-                "model": "gpt-3.5-turbo",
-                "messages": [{"role": "user", "content": chunk}]
-            }
-            response = requests.post(API_URL, json=payload, headers=headers)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if "choices" in data and data["choices"]:
-                    responses.append(data["choices"][0]["message"]["content"])
-            else:
-                print("Error processing with GPT API:", response.status_code, response.text)
-                await message.reply("Failed to process with RapidAPI GPT model. Please try again later.")
-                return
-
-        # Combine the responses into a single string
-        final_response = "\n\n".join(responses)
-
-        # Send response to the user
-        button_url = f"https://afrahtafreeh.site/chatpdf?user_id={user_id}"
-        button = InlineKeyboardMarkup([[InlineKeyboardButton("CLICK HERE", url=button_url)]])
-        await message.reply("Processing complete! 100% done. Click the button below to chat with your PDF!", reply_markup=button)
-
-        # Clean up
-        os.remove(file_path)
-        del user_files[user_id]  # Remove file path from dictionary after processing
-
-    except Exception as e:
-        print("Error processing PDF:", e)
-        await message.reply("An error occurred while processing your PDF.")
+@Client.on_message(filters.command("chatpdf") & filters.private)
+async def start_pdf_chat(client, message):
+    user_id = message.from_user.id
+    
+    # Check if PDF file exists for the user
+    pdf_path = client.user_data.get(user_id)
+    if not pdf_path:
+        await message.reply_text("Please send a PDF file first.")
+        return
+    
+    await message.reply_text("Please ask your question about the PDF.")
+    
+    # Listen for the user’s question
+    @Client.on_message(filters.text & filters.private)
+    async def handle_question(client, question_message):
+        query = question_message.text
+        text_by_page = extract_pdf_text_by_page(pdf_path)
+        
+        # Find pages related to the query
+        relevant_pages = find_relevant_pages(query, text_by_page)
+        
+        # Gather text from relevant pages and create chunks
+        text_to_analyze = " ".join([text_by_page[page] for page in relevant_pages])
+        text_chunks = create_text_chunks(text_to_analyze)
+        
+        # Process each chunk with Caploit API
+        answers = []
+        for chunk in text_chunks:
+            response = query_caploit_api(chunk)
+            answers.append(response)
+        
+        # Send final answer back to the user
+        final_answer = " ".join(answers)
+        await question_message.reply_text(f"Answer: {final_answer}")
