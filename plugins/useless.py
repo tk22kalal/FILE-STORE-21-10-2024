@@ -12,7 +12,7 @@ import requests
 import google.generativeai as genai
 from database.database import full_userbase
 
-genai.configure(api_key="AIzaSyBjcQWATZfQ9vwytmlWEuLPrgvntdixuk0")
+genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 
 buttonz = ReplyKeyboardMarkup(
     [
