@@ -13,20 +13,18 @@ import google.generativeai as genai
 from database.database import full_userbase
 import PyPDF2
 import io
+import nltk
 from nltk.tokenize import sent_tokenize
 
+# Configure the Google Gemini API Key
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 
-buttonz = ReplyKeyboardMarkup(
-    [
-        ["newchat⚡️"],
-    ],
-    resize_keyboard=True
-)
+# Download NLTK data required for sentence tokenization
+nltk.download('punkt')
 
-inline_button = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("🩺 MEDICAL LECTURES", url="https://sites.google.com/view/pavoladdder")]]
-)
+# Setup keyboard buttons
+buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
+inline_button = InlineKeyboardMarkup([[InlineKeyboardButton("🩺 MEDICAL LECTURES", url="https://sites.google.com/view/pavoladdder")]])
 
 # Dictionary to store user/admin conversations and PDF content
 user_conversations = {}
@@ -34,6 +32,7 @@ user_pdfs = {}
 
 @Bot.on_message(filters.command('clear') & filters.user(ADMINS))
 async def clear(bot: Bot, message: Message):
+    """Clear the bot's message history in the chat."""
     chat_id = message.chat.id
     async for msg in bot.search_messages(chat_id, limit=100):
         if msg.from_user.is_bot and msg.message_id != message.message_id:
@@ -42,6 +41,7 @@ async def clear(bot: Bot, message: Message):
 
 @Bot.on_message(filters.command('stats') & filters.user(ADMINS))
 async def stats(bot: Bot, message: Message):
+    """Display bot uptime statistics."""
     now = datetime.now()
     delta = now - bot.uptime
     time = get_readable_time(delta.seconds)
@@ -49,6 +49,7 @@ async def stats(bot: Bot, message: Message):
 
 @Client.on_message(filters.document.mime_type("application/pdf"))
 async def pdf_handler(client: Client, message: Message):
+    """Handle PDF uploads, extract text, and store for the user."""
     file_id = message.document.file_id
     file = await client.download_media(file_id)
     
@@ -65,6 +66,7 @@ async def pdf_handler(client: Client, message: Message):
 
 @Client.on_message(filters.reply & filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
+    """Respond to questions about a PDF by finding relevant content."""
     user_id = message.from_user.id
     if user_id in user_pdfs:
         question = message.text
@@ -78,7 +80,7 @@ async def pdf_question_handler(client: Client, message: Message):
         relevant_chunks = [chunk for chunk in chunks if any(keyword.lower() in chunk.lower() for keyword in question.split())]
         prompt_text = " ".join(relevant_chunks)
         
-        # Set up the model
+        # Set up the model configuration
         generation_config = {
             "temperature": 1,
             "top_p": 1,
@@ -114,6 +116,7 @@ async def pdf_question_handler(client: Client, message: Message):
 
 @Client.on_message((filters.private & filters.text) | (filters.command("newchat") | filters.regex('newchat⚡️')))
 async def lazy_answer(client: Client, message: Message):
+    """Standard Q&A using chat without PDF context."""
     if AI:
         user_id = message.from_user.id
         if user_id:
