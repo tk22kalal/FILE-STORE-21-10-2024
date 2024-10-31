@@ -1,14 +1,10 @@
 from pyrogram import Client, filters
 import fitz  # PyMuPDF
 import requests  # For API calls
-from langchain import LangChain
-
-# Initialize LangChain
-langchain_client = LangChain(api_key="5fddb1d96dd84b47a8af1c5854e8b078.659333c9f6ac62c1")
 
 # Caploit API Endpoint and Headers
 CAPLOIT_API_ENDPOINT = "https://api.copilot.com"
-CAPLOIT_API_KEY = "5fddb1d96dd84b47a8af1c5854e8b078.659333c9f6ac62c1"
+CAPLOIT_API_KEY = "YOUR_CAPLOIT_API_KEY"
 HEADERS = {
     "Authorization": f"Bearer {CAPLOIT_API_KEY}",
     "Content-Type": "application/json"
