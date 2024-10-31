@@ -164,13 +164,14 @@ async def pdf_question_handler(client: Client, message: Message):
                 {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
             ]
         )
-
+        
+        response = model.generate_content([formatted_prompt])
         lazy_response = response.text
         formatted_response = lazy_response.replace("**", "<b>").replace("**", "</b>")
 
         await client.send_message(
             chat_id=message.chat.id,
-            text=lazy_response,
+            text=formatted_response,
             parse_mode=ParseMode.HTML,
             reply_markup=inline_button
         )
