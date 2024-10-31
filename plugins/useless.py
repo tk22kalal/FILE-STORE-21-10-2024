@@ -2,27 +2,20 @@ from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
 from pyrogram.enums import ParseMode
-from config import ADMINS, BOT_STATS_TEXT, USER_REPLY_TEXT, AI, AI_LOGS
+from config import ADMINS, BOT_STATS_TEXT, USER_REPLY_TEXT, AI, OPENAI_API, AI_LOGS
 from datetime import datetime
 from helper_func import get_readable_time
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
-from pyrogram import Client
+from pyrogram import Client, filters
 import openai
+import requests
 import google.generativeai as genai
 from database.database import full_userbase
 import PyPDF2
-import os
-import nltk
-from nltk.tokenize import sent_tokenize
+import io
 
-# Configure the Google Gemini API Key via environment variable
+# Configure the Google Gemini API Key
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-
-# Configure NLTK download directory
-nltk_data_dir = '/app/nltk_data'
-os.makedirs(nltk_data_dir, exist_ok=True)
-nltk.download('punkt', download_dir=nltk_data_dir)
-nltk.data.path.append(nltk_data_dir)
 
 # Setup keyboard buttons
 buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
@@ -52,19 +45,27 @@ async def stats(bot: Bot, message: Message):
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text, and store for the user."""
+    # Check if the document is a PDF by looking at the file name
     if message.document.file_name.endswith(".pdf"):
         file_id = message.document.file_id
         file = await client.download_media(file_id)
         
+        # Extract text from the PDF
         with open(file, "rb") as f:
             reader = PyPDF2.PdfReader(f)
-            pdf_text = "".join(page.extract_text() for page in reader.pages)
+            pdf_text = ""
+            for page in reader.pages:
+                pdf_text += page.extract_text()
         
         user_id = message.from_user.id
         user_pdfs[user_id] = pdf_text
         await message.reply("PDF found. Reply to this PDF with your question to ask questions related to its content.")
     else:
         await message.reply("Please upload a PDF document.")
+
+def chunk_text(text, chunk_size=200):
+    """Split text into chunks of a specified size."""
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 @Client.on_message(filters.reply & filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
@@ -73,13 +74,15 @@ async def pdf_question_handler(client: Client, message: Message):
     if user_id in user_pdfs:
         question = message.text
         pdf_content = user_pdfs[user_id]
-        
-        sentences = sent_tokenize(pdf_content)
-        chunks = [" ".join(sentences[i:i + 5]) for i in range(0, len(sentences), 5)]
-        
+
+        # Create chunks from the PDF text
+        chunks = chunk_text(pdf_content)
+
+        # Find relevant chunks based on keywords
         relevant_chunks = [chunk for chunk in chunks if any(keyword.lower() in chunk.lower() for keyword in question.split())]
         prompt_text = " ".join(relevant_chunks)
-        
+
+        # Set up the model configuration
         generation_config = {
             "temperature": 1,
             "top_p": 1,
@@ -99,20 +102,17 @@ async def pdf_question_handler(client: Client, message: Message):
             generation_config=generation_config,
             safety_settings=safety_settings
         )
-        
-        try:
-            response = model.generate_content([prompt_text + "\n\nQuestion: " + question])
-            lazy_response = response.text
 
-            await client.send_message(
-                chat_id=message.chat.id,
-                text=lazy_response,
-                parse_mode=ParseMode.HTML,
-                reply_markup=inline_button
-            )
-        except Exception as e:
-            await message.reply("Sorry, there was an issue generating a response.")
-            print(e)
+        # Generate response using Gemini model
+        response = model.generate_content([prompt_text + "\n\nQuestion: " + question])
+        lazy_response = response.text
+
+        await client.send_message(
+            chat_id=message.chat.id,
+            text=lazy_response,
+            parse_mode=ParseMode.HTML,
+            reply_markup=inline_button
+        )
     else:
         await message.reply("Please upload a PDF first and ask your question by replying to it.")
 
@@ -125,8 +125,9 @@ async def lazy_answer(client: Client, message: Message):
             try:
                 if message.text.lower().strip() == "/newchat" or message.text.strip() == 'newchat⚡️':
                     user_conversations.pop(user_id, None)
-                    user_pdfs.pop(user_id, None)
-                    await message.reply("New chat started. Ask me anything!")
+                    user_pdfs.pop(user_id, None)  # Clear any stored PDF data
+                    response_text = "New chat started. Ask me anything!"
+                    await message.reply(response_text)
                     return
 
                 user_messages = user_conversations.get(user_id, [])
@@ -152,8 +153,9 @@ async def lazy_answer(client: Client, message: Message):
                     generation_config=generation_config,
                     safety_settings=safety_settings
                 )
+                prompt_parts = [prompt]
 
-                response = model.generate_content([prompt])
+                response = model.generate_content(prompt_parts)
 
                 users = await full_userbase()
                 footer_credit = "<b>ADMIN ID:</b> - @talktomembbs_bot\n<b>Total Users:</b> {}".format(len(users))
