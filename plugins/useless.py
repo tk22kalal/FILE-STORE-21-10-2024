@@ -147,12 +147,14 @@ async def pdf_question_handler(client: Client, message: Message):
         )
 
         response = model.generate_content([formatted_prompt])
+        response_content = response.result.candidates[0].content.parts[0].text
+
 
         user_context[user_id] = response
 
         await client.send_message(
             chat_id=message.chat.id,
-            text=response
+            text=response_content
         )
     else:
         await message.reply("Please upload a PDF first to ask questions about its content.")
