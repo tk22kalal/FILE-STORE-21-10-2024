@@ -148,17 +148,21 @@ async def pdf_question_handler(client: Client, message: Message):
         response = model.generate_content([formatted_prompt])
         
         # Adjust the response to replace main headings with bold formatting
-        formatted_response = response.text.replace("Main Topic", "Main Topic") \
-                                           .replace("Key Points", "Key Points") \
-                                           .replace("Details", "Details") \
-                                           .replace("Examples", "Examples")
+        
+        # Example of formatting for Markdown
+        formatted_response = (
+            "*Main Topic:*\n"
+            "• Key Points\n"
+            "  - Details\n"
+            "  - Examples\n"
+        )
 
         user_context[user_id] = formatted_response
 
         await client.send_message(
             chat_id=message.chat.id,
             text=formatted_response,
-            parse_mode=ParseMode.HTML,  # Set parse mode to HTML
+            parse_mode=ParseMode.Markdown,  # Set parse mode to HTML
             reply_markup=inline_button
         )
     else:
