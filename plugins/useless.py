@@ -127,11 +127,12 @@ async def pdf_question_handler(client: Client, message: Message):
             prompt_text = " ".join(relevant_chunks)
         
         # Formatting the prompt for AI generation
-        formatted_prompt = (
-            "Explain in simple language, Main headings should be in , in notes format, add google gemini information to explain in easy words and use below formats according to needs:\n"
-            "• Main Topic\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"            
+            formatted_prompt = (
+            "Explain in easy language, in point wise, and use below symbols for different levels of headings (h1, h2, h3, h4, ...):\n"
+            "● , ○, ✓, •, * or NUMBERS or .... \n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
+
 
         # Generate content with Gemini AI
         generation_config = {"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
