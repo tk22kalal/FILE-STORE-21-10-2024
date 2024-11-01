@@ -25,105 +25,114 @@ vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/g
 buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
 inline_button = InlineKeyboardMarkup([[InlineKeyboardButton("🩺 MEDICAL LECTURES", url="https://sites.google.com/view/pavoladdder")]])
 
+user_conversations = {}
 user_pdfs = {}
-user_conversations = {}  
 user_context = {}  # Track conversation context for follow-up questions
+user_page_range = {}  # Track page ranges specified by the user
+
+@Bot.on_message(filters.command('clear') & filters.user(ADMINS))
+async def clear(bot: Bot, message: Message):
+    chat_id = message.chat.id
+    async for msg in bot.search_messages(chat_id, limit=100):
+        if msg.from_user.is_bot and msg.message_id != message.message_id:
+            await msg.delete()
+    await message.reply("Bot message history cleared.")
+
+@Bot.on_message(filters.command('stats') & filters.user(ADMINS))
+async def stats(bot: Bot, message: Message):
+    now = datetime.now()
+    delta = now - bot.uptime
+    time = get_readable_time(delta.seconds)
+    await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
-    """Handle PDF uploads and ask the user for a page range if the PDF is large."""
+    """Handle PDF uploads, ask for page range, and process text or images."""
     if message.document.file_name.endswith(".pdf"):
         user_id = message.from_user.id
         file_id = message.document.file_id
-        file_path = await client.download_media(file_id)  # Correctly get the file path
-
-        # Check the number of pages first
-        try:
-            with open(file_path, "rb") as f:
-                reader = PyPDF2.PdfReader(f)
-                num_pages = len(reader.pages)
-
-                if num_pages > 10:  # Trigger split handling if PDF is large
-                    await message.reply("Type the range of pages to process (e.g., 0-5, 8-11) or type /skip to process the entire PDF.")
-                    user_pdfs[user_id] = file_path  # Store the path for use after user response
-                else:
-                    await process_pdf(client, message, file_path)  # Process the entire PDF if it's small
-
-        except Exception as e:
-            await message.reply("Error reading the PDF. Please try again.")
-            print(f"Error reading PDF: {e}")
+        user_pdfs[user_id] = {"file_id": file_id}
+        
+        # Ask the user for the page range or to skip
+        await message.reply(
+            "Please type the range of pages to process in the format `0-5, 6-12, 3-4`, or type `/skip` to process the entire PDF."
+        )
     else:
-        await message.reply("Please upload a valid PDF document.")
+        await message.reply("Please upload a PDF document.")
 
 @Client.on_message(filters.text & filters.private)
-async def page_range_handler(client: Client, message: Message):
-    """Handle the user input for page ranges or skipping."""
+async def pdf_range_handler(client: Client, message: Message):
     user_id = message.from_user.id
-    if user_id in user_pdfs:
-        file_path = user_pdfs[user_id]
-
-        if message.text.lower() == "/skip":
-            # User chose to process the whole PDF
-            await process_pdf(client, message, file_path)
-            del user_pdfs[user_id]  # Remove stored file path after processing
+    
+    # Check if the user is providing a page range after uploading a PDF
+    if user_id in user_pdfs and "file_id" in user_pdfs[user_id]:
+        page_range_text = message.text.strip()
+        
+        if page_range_text.lower() == "/skip":
+            # User chose to skip, process the entire PDF
+            user_page_range[user_id] = None
+            await process_pdf(client, message)
         else:
-            # User provided a range of pages
+            # Parse the provided page ranges
             try:
-                page_ranges = parse_page_ranges(message.text)
-                if page_ranges:
-                    await process_pdf(client, message, file_path, page_ranges)
-                    del user_pdfs[user_id]  # Remove stored file path after processing
-                else:
-                    await message.reply("Invalid page range format. Please type the range in the format 0-3, 4-7, etc., or type /skip.")
-            except Exception as e:
-                await message.reply("Error parsing page range. Please try again.")
-                print(f"Error parsing page range: {e}")
-    else:
-        await message.reply("Please upload a PDF first to specify a page range.")
-
-def parse_page_ranges(page_range_text):
-    """Parse the user input for page ranges into a list of page indices."""
-    page_ranges = []
-    ranges = page_range_text.split(",")
-    for range_str in ranges:
-        if "-" in range_str:
-            start, end = map(int, range_str.split("-"))
-            page_ranges.extend(range(start, end + 1))
-        else:
-            page_ranges.append(int(range_str))
-    return page_ranges
-
-async def process_pdf(client: Client, message: Message, file_path, selected_pages=None):
-    """Extract text and OCR content from the specified pages of the PDF."""
-    user_id = message.from_user.id  # Ensure user_id is properly defined
+                ranges = page_range_text.split(',')
+                page_ranges = []
+                for r in ranges:
+                    start, end = map(int, r.split('-'))
+                    page_ranges.extend(range(start, end + 1))
+                
+                user_page_range[user_id] = sorted(set(page_ranges))  # Remove duplicates and sort pages
+                await process_pdf(client, message)
+                
+            except ValueError:
+                await message.reply("Invalid format. Please type the range as `0-5, 6-12`, or type `/skip` to process all pages.")
+    
+async def process_pdf(client: Client, message: Message):
+    """Process the PDF, extract text from specified pages or full PDF."""
+    user_id = message.from_user.id
+    file_id = user_pdfs[user_id]["file_id"]
+    page_range = user_page_range.get(user_id)
+    
+    file = await client.download_media(file_id)
     pdf_text = ""
     try:
-        with open(file_path, "rb") as f:
+        with open(file, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             num_pages = len(reader.pages)
-
-            pages_to_process = selected_pages if selected_pages else range(num_pages)
+            pages_to_process = page_range if page_range else range(num_pages)
 
             for page_num in pages_to_process:
-                if page_num < num_pages:
-                    page = reader.pages[page_num]
-                    page_text = page.extract_text() or ""
+                if page_num >= num_pages:
+                    continue  # Skip if the specified page is out of range
+                
+                page = reader.pages[page_num]
+                page_text = page.extract_text() or ""
 
-                    # Convert page to image and use Google Vision OCR if needed
-                    images = pdf2image.convert_from_path(file_path, first_page=page_num + 1, last_page=page_num + 1, dpi=300)
-                    for image in images:
-                        image_bytes = io.BytesIO()
-                        image.save(image_bytes, format='JPEG')
-                        vision_image = vision.Image(content=image_bytes.getvalue())
+                # Convert page to image and use Google Vision OCR if text is missing
+                images = pdf2image.convert_from_path(file, first_page=page_num+1, last_page=page_num+1, dpi=300)
+                for image in images:
+                    image_bytes = io.BytesIO()
+                    image.save(image_bytes, format='JPEG')
+                    vision_image = vision.Image(content=image_bytes.getvalue())
 
-                        ocr_response = vision_client.text_detection(image=vision_image)
-                        ocr_text = ocr_response.full_text_annotation.text
-                        page_text += ocr_text
+                    ocr_response = vision_client.text_detection(image=vision_image)
+                    ocr_text = ocr_response.full_text_annotation.text
+                    page_text += ocr_text
 
-                    pdf_text += f"Page {page_num + 1}:\n{page_text}\n\n"
+                # If text is incomplete, generate content with Gemini AI
+                if len(page_text.strip()) < 50:
+                    prompt_text = f"The text on page {page_num + 1} is unclear or partially missing. Provide an explanation in simple notes."
+                    model = genai.GenerativeModel(
+                        model_name="gemini-pro",
+                        generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 800}
+                    )
+                    response = model.generate_content([prompt_text])
+                    page_text += response.text
 
-        user_pdfs[user_id] = pdf_text
-        await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content or ask directly without replying for follow-up questions.")
+                pdf_text += f"Page {page_num + 1}:\n{page_text}\n\n"
+
+        user_pdfs[user_id]["content"] = pdf_text
+        await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content, or ask directly without replying for follow-up questions.")
 
     except Exception as e:
         await message.reply("Error processing the PDF. Please try again.")
@@ -135,9 +144,9 @@ def chunk_text(text, chunk_size=200):
 @Client.on_message(filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
     user_id = message.from_user.id
-    if user_id in user_pdfs:
-        pdf_content = user_pdfs[user_id]
-
+    if user_id in user_pdfs and "content" in user_pdfs[user_id]:
+        pdf_content = user_pdfs[user_id]["content"]
+        
         if message.reply_to_message:
             # If user is replying to an answer, continue from the context
             if message.reply_to_message.from_user.is_bot:
@@ -146,30 +155,26 @@ async def pdf_question_handler(client: Client, message: Message):
 
                 prompt_text = f"{previous_answer}\n\nFollow-up Question: {question}"
             else:
-                # If replying to PDF or asking first question without reply, process PDF
                 question = message.text.lower()
-                user_context[user_id] = pdf_content  # Set PDF as the initial context
+                user_context[user_id] = pdf_content
 
                 chunks = chunk_text(pdf_content)
                 relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
                 prompt_text = " ".join(relevant_chunks)
         else:
-            # Direct questions about the PDF
             question = message.text.lower()
-            user_context[user_id] = pdf_content  # Set PDF as the initial context
-
+            user_context[user_id] = pdf_content
+            
             chunks = chunk_text(pdf_content)
             relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
             prompt_text = " ".join(relevant_chunks)
-
-        # Formatting the prompt for AI generation
+        
         formatted_prompt = (
             "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs(dont use * , -):\n"
             "• Main Topic(always bold)\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
-        # Generate content with Gemini AI
         generation_config = {"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
         model = genai.GenerativeModel(
             model_name="gemini-pro", generation_config=generation_config,
@@ -184,7 +189,6 @@ async def pdf_question_handler(client: Client, message: Message):
         response = model.generate_content([formatted_prompt])
         formatted_response = response.text.replace("**", "<b>").replace("**", "</b>")
 
-        # Store this response in the context for follow-up questions
         user_context[user_id] = formatted_response
 
         await client.send_message(
@@ -193,4 +197,5 @@ async def pdf_question_handler(client: Client, message: Message):
             reply_markup=inline_button
         )
     else:
-        await message.reply("Please upload a PDF first to ask questions about its content.")
+        await message.reply("Please upload a PDF document first.")
+
