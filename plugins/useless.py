@@ -97,6 +97,7 @@ async def pdf_handler(client: Client, message: Message):
 def chunk_text(text, chunk_size=200):
     return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
+
 @Client.on_message(filters.text & filters.private)
 async def pdf_question_handler(client: Client, message: Message):
     user_id = message.from_user.id
@@ -104,24 +105,21 @@ async def pdf_question_handler(client: Client, message: Message):
         pdf_content = user_pdfs[user_id]
         
         if message.reply_to_message:
-            # If user is replying to an answer, continue from the context
             if message.reply_to_message.from_user.is_bot:
                 previous_answer = user_context.get(user_id, "")
                 question = message.text
 
                 prompt_text = f"{previous_answer}\n\nFollow-up Question: {question}"
             else:
-                # If replying to PDF or asking first question without reply, process PDF
                 question = message.text.lower()
-                user_context[user_id] = pdf_content  # Set PDF as the initial context
+                user_context[user_id] = pdf_content
 
                 chunks = chunk_text(pdf_content)
                 relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
                 prompt_text = " ".join(relevant_chunks)
         else:
-            # Direct questions about the PDF
             question = message.text.lower()
-            user_context[user_id] = pdf_content  # Set PDF as the initial context
+            user_context[user_id] = pdf_content
             
             chunks = chunk_text(pdf_content)
             relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
@@ -129,8 +127,8 @@ async def pdf_question_handler(client: Client, message: Message):
         
         # Formatting the prompt for AI generation
         formatted_prompt = (
-            "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs(dont use * , -):\n"
-            "• Main Topic(always bold)\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
+            "Explain in simple language, Main headings should be in **bold** (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs:\n"
+            "• Main Topic (always bold)\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
@@ -147,14 +145,19 @@ async def pdf_question_handler(client: Client, message: Message):
         )
 
         response = model.generate_content([formatted_prompt])
-        formatted_response = response.text.replace("**", "<b>").replace("**", "</b>")
+        
+        # Adjust the response to replace main headings with bold formatting
+        formatted_response = response.text.replace("Main Topic", "Main Topic") \
+                                           .replace("Key Points", "Key Points") \
+                                           .replace("Details", "Details") \
+                                           .replace("Examples", "Examples")
 
-        # Store this response in the context for follow-up questions
         user_context[user_id] = formatted_response
 
         await client.send_message(
             chat_id=message.chat.id,
             text=formatted_response,
+            parse_mode="HTML",  # Set parse mode to HTML
             reply_markup=inline_button
         )
     else:
