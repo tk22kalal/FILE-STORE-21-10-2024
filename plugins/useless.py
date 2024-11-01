@@ -127,7 +127,7 @@ async def pdf_question_handler(client: Client, message: Message):
             prompt_text = " ".join(relevant_chunks)
         
         formatted_prompt = (
-            "Explain in easy language, in point wise, and use below symbols for different levels of headings (h1, h2, h3, h4, ...):\n"
+            "Explain in easy language, in point wise, dont use # or * like symbols and use below symbols for different levels of headings (h1, h2, h3, h4, ...etc) which are in strong bold text:\n"
             "● , ○, ✓, •, * or NUMBERS or .... \n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
