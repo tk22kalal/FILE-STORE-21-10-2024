@@ -153,6 +153,7 @@ async def pdf_question_handler(client: Client, message: Message):
 
         await client.send_message(
             chat_id=message.chat.id,
+            parsemode=ParseMode.HTML,
             text=response_content
         )
     else:
