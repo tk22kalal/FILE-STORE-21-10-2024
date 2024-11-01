@@ -19,75 +19,86 @@ import pdf2image
 
 # Configure the Google Gemini API Key and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("path/to/your/service_account.json")
 
 # Setup keyboard buttons
 buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
 inline_button = InlineKeyboardMarkup([[InlineKeyboardButton("🩺 MEDICAL LECTURES", url="https://sites.google.com/view/pavoladdder")]])
 
-user_conversations = {}
 user_pdfs = {}
+user_conversations = {}  
 user_context = {}  # Track conversation context for follow-up questions
-
-@Bot.on_message(filters.command('clear') & filters.user(ADMINS))
-async def clear(bot: Bot, message: Message):
-    chat_id = message.chat.id
-    async for msg in bot.search_messages(chat_id, limit=100):
-        if msg.from_user.is_bot and msg.message_id != message.message_id:
-            await msg.delete()
-    await message.reply("Bot message history cleared.")
-
-@Bot.on_message(filters.command('stats') & filters.user(ADMINS))
-async def stats(bot: Bot, message: Message):
-    now = datetime.now()
-    delta = now - bot.uptime
-    time = get_readable_time(delta.seconds)
-    await message.reply(BOT_STATS_TEXT.format(uptime=time))
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
-    """Handle PDF uploads and prompt for page range."""
+    """Handle PDF uploads and ask the user for a page range if the PDF is large."""
     if message.document.file_name.endswith(".pdf"):
-        file_id = message.document.file_id
-        file = await client.download_media(file_id)
-
         user_id = message.from_user.id
-        user_pdfs[user_id] = file  # Store the file path temporarily
+        file_id = message.document.file_id
+        file_path = await client.download_media(file_id)  # Correctly get the file path
 
-        # Prompt the user for a page range
-        await message.reply("Please type the range of pages to process (e.g., 0-5, 8-11) or type /skip to process the entire PDF.")
+        # Check the number of pages first
+        try:
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                num_pages = len(reader.pages)
+
+                if num_pages > 10:  # Trigger split handling if PDF is large
+                    await message.reply("Type the range of pages to process (e.g., 0-5, 8-11) or type /skip to process the entire PDF.")
+                    user_pdfs[user_id] = file_path  # Store the path for use after user response
+                else:
+                    await process_pdf(client, message, file_path)  # Process the entire PDF if it's small
+
+        except Exception as e:
+            await message.reply("Error reading the PDF. Please try again.")
+            print(f"Error reading PDF: {e}")
+    else:
+        await message.reply("Please upload a valid PDF document.")
 
 @Client.on_message(filters.text & filters.private)
 async def page_range_handler(client: Client, message: Message):
-    """Handle user response for page range or skip."""
+    """Handle the user input for page ranges or skipping."""
     user_id = message.from_user.id
-
     if user_id in user_pdfs:
-        file = user_pdfs[user_id]
+        file_path = user_pdfs[user_id]
 
         if message.text.lower() == "/skip":
-            # Process the entire PDF as before
-            await process_pdf(client, message, file)
+            # User chose to process the whole PDF
+            await process_pdf(client, message, file_path)
+            del user_pdfs[user_id]  # Remove stored file path after processing
         else:
-            # Parse the page range and validate it
+            # User provided a range of pages
             try:
-                page_ranges = message.text.split(',')
-                selected_pages = []
-                for page_range in page_ranges:
-                    start, end = map(int, page_range.split('-'))
-                    selected_pages.extend(range(start, end + 1))
+                page_ranges = parse_page_ranges(message.text)
+                if page_ranges:
+                    await process_pdf(client, message, file_path, page_ranges)
+                    del user_pdfs[user_id]  # Remove stored file path after processing
+                else:
+                    await message.reply("Invalid page range format. Please type the range in the format 0-3, 4-7, etc., or type /skip.")
+            except Exception as e:
+                await message.reply("Error parsing page range. Please try again.")
+                print(f"Error parsing page range: {e}")
+    else:
+        await message.reply("Please upload a PDF first to specify a page range.")
 
-                await process_pdf(client, message, file, selected_pages=selected_pages)
+def parse_page_ranges(page_range_text):
+    """Parse the user input for page ranges into a list of page indices."""
+    page_ranges = []
+    ranges = page_range_text.split(",")
+    for range_str in ranges:
+        if "-" in range_str:
+            start, end = map(int, range_str.split("-"))
+            page_ranges.extend(range(start, end + 1))
+        else:
+            page_ranges.append(int(range_str))
+    return page_ranges
 
-            except ValueError:
-                await message.reply("Invalid page range format. Please use the format (e.g., 0-5, 8-11) or type /skip.")
-
-async def process_pdf(client: Client, message: Message, file, selected_pages=None):
-    """Extract text and OCR content from the PDF."""
-    user_id = message.from_user.id
+async def process_pdf(client: Client, message: Message, file_path, selected_pages=None):
+    """Extract text and OCR content from the specified pages of the PDF."""
+    user_id = message.from_user.id  # Ensure user_id is properly defined
     pdf_text = ""
     try:
-        with open(file, "rb") as f:
+        with open(file_path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             num_pages = len(reader.pages)
 
@@ -98,8 +109,8 @@ async def process_pdf(client: Client, message: Message, file, selected_pages=Non
                     page = reader.pages[page_num]
                     page_text = page.extract_text() or ""
 
-                    # Convert page to image and use Google Vision OCR
-                    images = pdf2image.convert_from_path(file, first_page=page_num + 1, last_page=page_num + 1, dpi=300)
+                    # Convert page to image and use Google Vision OCR if needed
+                    images = pdf2image.convert_from_path(file_path, first_page=page_num + 1, last_page=page_num + 1, dpi=300)
                     for image in images:
                         image_bytes = io.BytesIO()
                         image.save(image_bytes, format='JPEG')
