@@ -147,8 +147,7 @@ async def pdf_question_handler(client: Client, message: Message):
         )
 
         response = model.generate_content([formatted_prompt])
-        response_content = response.text
-
+        response_content = response.text.replace("**", "<b>").replace("<b>", "</b>", 1).replace("<b>", "</b>", 1)
 
         user_context[user_id] = response
 
