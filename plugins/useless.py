@@ -84,6 +84,7 @@ async def page_range_handler(client: Client, message: Message):
 
 async def process_pdf(client: Client, message: Message, file, selected_pages=None):
     """Extract text and OCR content from the PDF."""
+    user_id = message.from_user.id
     pdf_text = ""
     try:
         with open(file, "rb") as f:
