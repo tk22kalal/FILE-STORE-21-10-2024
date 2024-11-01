@@ -158,7 +158,7 @@ async def pdf_question_handler(client: Client, message: Message):
         await client.send_message(
             chat_id=message.chat.id,
             text=formatted_response,
-            parse_mode="HTML",  # Set parse mode to HTML
+            parse_mode=parsemode.HTML,  # Set parse mode to HTML
             reply_markup=inline_button
         )
     else:
