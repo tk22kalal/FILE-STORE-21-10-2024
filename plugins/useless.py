@@ -126,14 +126,12 @@ async def pdf_question_handler(client: Client, message: Message):
             relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
             prompt_text = " ".join(relevant_chunks)
         
-        # Formatting the prompt for AI generation
-            formatted_prompt = (
+        formatted_prompt = (
             "Explain in easy language, in point wise, and use below symbols for different levels of headings (h1, h2, h3, h4, ...):\n"
             "● , ○, ✓, •, * or NUMBERS or .... \n\n"
             f"{prompt_text}\n\nQuestion: {question}"
         )
-
-
+        
         # Generate content with Gemini AI
         generation_config = {"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 1000}
         model = genai.GenerativeModel(
