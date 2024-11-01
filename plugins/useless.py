@@ -129,8 +129,7 @@ async def pdf_question_handler(client: Client, message: Message):
         # Formatting the prompt for AI generation
         formatted_prompt = (
             "Explain in simple language, Main headings should be in , in notes format, add google gemini information to explain in easy words and use below formats according to needs:\n"
-            "• Main Topic\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
-            "Main Topic , Main Headings, Sub Headings should be bold so add <b> before and </b> after them."
+            "• Main Topic\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"            
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
@@ -146,9 +145,15 @@ async def pdf_question_handler(client: Client, message: Message):
             ]
         )
 
+        
         response = model.generate_content([formatted_prompt])
-        response_content = response.text.replace("**", "<b>").replace("<b>", "</b>", 1).replace("<b>", "</b>", 1)
 
+        # Replace double asterisks with <b> and </b>
+        parts = response.text.split("**")
+        response_content = "".join(
+            f"<b>{part}</b>" if index % 2 == 1 else part for index, part in enumerate(parts)
+        )
+        
         user_context[user_id] = response
 
         await client.send_message(
