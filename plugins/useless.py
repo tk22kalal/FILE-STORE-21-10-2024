@@ -19,7 +19,7 @@ import pdf2image
 
 # Configure the Google Gemini API Key and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-vision_client = vision.ImageAnnotatorClient.from_service_account_file("path/to/your/service_account.json")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
 # Setup keyboard buttons
 buttonz = ReplyKeyboardMarkup([["newchat⚡️"]], resize_keyboard=True)
