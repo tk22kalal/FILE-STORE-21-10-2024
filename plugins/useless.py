@@ -147,7 +147,7 @@ async def pdf_question_handler(client: Client, message: Message):
         )
 
         response = model.generate_content([formatted_prompt])
-        response_content = response.result.candidates[0].content.parts[0].text
+        response_content = response.text
 
 
         user_context[user_id] = response
