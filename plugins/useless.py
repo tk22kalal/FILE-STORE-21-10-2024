@@ -46,23 +46,59 @@ async def stats(bot: Bot, message: Message):
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
-    """Handle PDF uploads, extract text from both text and image-based PDFs, and store for the user."""
+    """Handle PDF uploads and prompt for page range."""
     if message.document.file_name.endswith(".pdf"):
         file_id = message.document.file_id
         file = await client.download_media(file_id)
-        
-        pdf_text = ""
-        try:
-            with open(file, "rb") as f:
-                reader = PyPDF2.PdfReader(f)
-                num_pages = len(reader.pages)
 
-                for page_num in range(num_pages):
+        user_id = message.from_user.id
+        user_pdfs[user_id] = file  # Store the file path temporarily
+
+        # Prompt the user for a page range
+        await message.reply("Please type the range of pages to process (e.g., 0-5, 8-11) or type /skip to process the entire PDF.")
+
+@Client.on_message(filters.text & filters.private)
+async def page_range_handler(client: Client, message: Message):
+    """Handle user response for page range or skip."""
+    user_id = message.from_user.id
+
+    if user_id in user_pdfs:
+        file = user_pdfs[user_id]
+
+        if message.text.lower() == "/skip":
+            # Process the entire PDF as before
+            await process_pdf(client, message, file)
+        else:
+            # Parse the page range and validate it
+            try:
+                page_ranges = message.text.split(',')
+                selected_pages = []
+                for page_range in page_ranges:
+                    start, end = map(int, page_range.split('-'))
+                    selected_pages.extend(range(start, end + 1))
+
+                await process_pdf(client, message, file, selected_pages=selected_pages)
+
+            except ValueError:
+                await message.reply("Invalid page range format. Please use the format (e.g., 0-5, 8-11) or type /skip.")
+
+async def process_pdf(client: Client, message: Message, file, selected_pages=None):
+    """Extract text and OCR content from the PDF."""
+    pdf_text = ""
+    try:
+        with open(file, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            num_pages = len(reader.pages)
+
+            pages_to_process = selected_pages if selected_pages else range(num_pages)
+
+            for page_num in pages_to_process:
+                if page_num < num_pages:
                     page = reader.pages[page_num]
                     page_text = page.extract_text() or ""
 
                     # Convert page to image and use Google Vision OCR
-                    images = pdf2image.convert_from_path(file, first_page=page_num+1, last_page=page_num+1, dpi=300)
+                    images = pdf2image.convert_from_path(file, first_page=page_num + 1, last_page=page_num + 1, dpi=300)
                     for image in images:
                         image_bytes = io.BytesIO()
                         image.save(image_bytes, format='JPEG')
@@ -72,27 +108,14 @@ async def pdf_handler(client: Client, message: Message):
                         ocr_text = ocr_response.full_text_annotation.text
                         page_text += ocr_text
 
-                    # If text is incomplete, generate content with Gemini AI
-                    if len(page_text.strip()) < 50:
-                        prompt_text = f"The text on page {page_num + 1} is unclear or partially missing. Provide an explanation in simple notes."
-                        model = genai.GenerativeModel(
-                            model_name="gemini-pro",
-                            generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 800}
-                        )
-                        response = model.generate_content([prompt_text])
-                        page_text += response.text
-
                     pdf_text += f"Page {page_num + 1}:\n{page_text}\n\n"
 
-            user_id = message.from_user.id
-            user_pdfs[user_id] = pdf_text
-            await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content or ask directly without replying for follow-up questions.")
+        user_pdfs[user_id] = pdf_text
+        await message.reply("PDF processed successfully. Reply to this PDF with your question to ask about its content or ask directly without replying for follow-up questions.")
 
-        except Exception as e:
-            await message.reply("Error processing the PDF. Please try again.")
-            print(f"Error processing PDF: {e}")
-    else:
-        await message.reply("Please upload a PDF document.")
+    except Exception as e:
+        await message.reply("Error processing the PDF. Please try again.")
+        print(f"Error processing PDF: {e}")
 
 def chunk_text(text, chunk_size=200):
     return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
@@ -102,7 +125,7 @@ async def pdf_question_handler(client: Client, message: Message):
     user_id = message.from_user.id
     if user_id in user_pdfs:
         pdf_content = user_pdfs[user_id]
-        
+
         if message.reply_to_message:
             # If user is replying to an answer, continue from the context
             if message.reply_to_message.from_user.is_bot:
@@ -122,11 +145,11 @@ async def pdf_question_handler(client: Client, message: Message):
             # Direct questions about the PDF
             question = message.text.lower()
             user_context[user_id] = pdf_content  # Set PDF as the initial context
-            
+
             chunks = chunk_text(pdf_content)
             relevant_chunks = [chunk for chunk in chunks if any(keyword in chunk.lower() for keyword in question.split())]
             prompt_text = " ".join(relevant_chunks)
-        
+
         # Formatting the prompt for AI generation
         formatted_prompt = (
             "Explain in simple language, Main headings subheadings should be strong bold (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs(dont use * , -):\n"
