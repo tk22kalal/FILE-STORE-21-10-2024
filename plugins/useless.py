@@ -128,8 +128,9 @@ async def pdf_question_handler(client: Client, message: Message):
         
         # Formatting the prompt for AI generation
         formatted_prompt = (
-            "Explain in simple language, Main headings should be in **bold** (do not include **), in notes format, add google gemini information to explain in easy words and use below formats according to needs:\n"
-            "• Main Topic (always bold)\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
+            "Explain in simple language, Main headings should be in , in notes format, add google gemini information to explain in easy words and use below formats according to needs:\n"
+            "• Main Topic\n\n  ● Key Points\n  ○ Details\n  ✓ Examples\n\n"
+            "Main Topic , Main Headings, Sub Headings should be bold so add <b> before and </b> after them."
             f"{prompt_text}\n\nQuestion: {question}"
         )
 
@@ -146,23 +147,12 @@ async def pdf_question_handler(client: Client, message: Message):
         )
 
         response = model.generate_content([formatted_prompt])
-        
-        # Adjust the response to replace main headings with bold formatting
-        
-        # Example of formatting for Markdown
-        formatted_response = (
-            "<b>Main Topic:</b>\n"
-            "• Key Points\n"
-            "  - Details\n"
-            "  - Examples\n"
-        )
 
-        user_context[user_id] = formatted_response
+        user_context[user_id] = response
 
         await client.send_message(
             chat_id=message.chat.id,
-            text=formatted_response,
-            reply_markup=inline_button
+            text=response
         )
     else:
         await message.reply("Please upload a PDF first to ask questions about its content.")
