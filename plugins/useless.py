@@ -9,12 +9,15 @@ import google.generativeai as genai
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from docx.oxml.ns import qn
 import pdf2image
 
-# Configure Google Gemini API and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
+
+
+# Configure Google Gemini API and Vision
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/security_key.json")
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
@@ -62,8 +65,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
                     run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    heading.paragraph_format.space_after = Pt(0)
-                    heading.paragraph_format.space_before = Pt(0)
 
                 elif line.startswith("H2:"):
                     # H2 Heading formatting
@@ -73,9 +74,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 128, 0)  # Green
                     run.bold = True
-                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    heading.paragraph_format.space_after = Pt(0)
-                    heading.paragraph_format.space_before = Pt(0)
 
                 elif line.startswith("H3:"):
                     # H3 Heading formatting
@@ -85,9 +83,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
                     run.bold = True
-                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    heading.paragraph_format.space_after = Pt(0)
-                    heading.paragraph_format.space_before = Pt(0)
 
                 elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
                     # H4 Heading or highlighted word formatting
@@ -97,19 +92,18 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 0, 0)  # Black
                     run.bold = True
-                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    heading.paragraph_format.space_after = Pt(0)
-                    heading.paragraph_format.space_before = Pt(0)
 
                 else:
                     # Normal Paragraph Text
-                    paragraph = document.add_paragraph(line.strip())
+                    paragraph = document.add_paragraph()
                     run = paragraph.add_run(line.strip())
                     run.font.size = Pt(13)
                     run.font.name = 'Tahoma'
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    paragraph.paragraph_format.space_after = Pt(0)
-                    paragraph.paragraph_format.space_before = Pt(0)
+
+                # Set minimal spacing for all paragraphs
+                paragraph_format = heading.paragraph_format if line.startswith(("MAIN:", "H2:", "H3:", "H4:", "HIGHLIGHT:")) else paragraph.paragraph_format
+                paragraph_format.space_after = Pt(1)
+                paragraph_format.space_before = Pt(1)
 
             # Save Word document
             word_file = io.BytesIO()
