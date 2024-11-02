@@ -1,7 +1,4 @@
 
-
-# Configure Google Gemini API and Vision
-
 from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
@@ -15,9 +12,9 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 import pdf2image
 
+# Configure Google Gemini API and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
-
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
@@ -58,11 +55,12 @@ async def pdf_handler(client: Client, message: Message):
             for line in lines:
                 if line.startswith("MAIN:"):
                     # Main Heading formatting
-                    heading = document.add_heading(level=1)
+                    heading = document.add_paragraph()
                     run = heading.add_run(line.replace("MAIN:", "").strip())
                     run.font.name = 'Baskerville Old Face'
                     run.font.size = Pt(28)
                     run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
+                    run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                     heading.paragraph_format.space_after = Pt(0)
                     heading.paragraph_format.space_before = Pt(0)
@@ -74,7 +72,7 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 128, 0)  # Green
-                    heading.style = 'List Bullet'
+                    run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
                     heading.paragraph_format.space_before = Pt(0)
@@ -86,7 +84,7 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
-                    heading.style = 'List Bullet 2'
+                    run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
                     heading.paragraph_format.space_before = Pt(0)
@@ -98,7 +96,7 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                    heading.style = 'List Bullet 3'
+                    run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
                     heading.paragraph_format.space_before = Pt(0)
@@ -106,10 +104,10 @@ async def pdf_handler(client: Client, message: Message):
                 else:
                     # Normal Paragraph Text
                     paragraph = document.add_paragraph(line.strip())
-                    paragraph.style.font.size = Pt(13)
-                    paragraph.style.font.name = 'Tahoma'
+                    run = paragraph.add_run(line.strip())
+                    run.font.size = Pt(13)
+                    run.font.name = 'Tahoma'
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    paragraph.style = 'List Bullet' if line.strip() else 'Normal'
                     paragraph.paragraph_format.space_after = Pt(0)
                     paragraph.paragraph_format.space_before = Pt(0)
 
@@ -130,5 +128,4 @@ async def pdf_handler(client: Client, message: Message):
             print(f"Error processing PDF: {e}")
     else:
         await message.reply("Please upload a PDF document.")
-
 
