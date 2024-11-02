@@ -2,24 +2,23 @@ from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
 from pyrogram.enums import ParseMode
-from config import ADMINS, AI, OPENAI_API
-from datetime import datetime
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram import Client
 import io
 from google.cloud import vision
 import google.generativeai as genai
 from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.oxml.ns import qn
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import pdf2image
 
 # Configure Google Gemini API and Vision
-genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
-
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/security_key.json")
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
-    """Handle PDF uploads, extract text from PDF via OCR, format notes, and send as Word document."""
+    """Handle PDF uploads, extract text via OCR, convert to notes format, and send as a formatted Word document."""
     if message.document.file_name.endswith(".pdf"):
         file_id = message.document.file_id
         file = await client.download_media(file_id)
@@ -41,8 +40,8 @@ async def pdf_handler(client: Client, message: Message):
 
             # Generate notes format using Gemini AI
             formatted_prompt = (
-                "Convert the following content into a structured, easy-to-understand notes format "
-                "with bullet points and clear sections. Use bold headings:\n\n" + pdf_text
+                "Convert the following content into a structured point wise format with ms word bullet points, "
+                "using simple language. Organize into sections with headings and subheadings:\n\n" + pdf_text
             )
             model = genai.GenerativeModel(
                 model_name="gemini-pro",
@@ -51,16 +50,34 @@ async def pdf_handler(client: Client, message: Message):
             response = model.generate_content([formatted_prompt])
             notes_text = response.text
 
-            # Format notes and add to Word document
-            parts = notes_text.split("\n")
-            for part in parts:
-                if part.startswith("●") or part.startswith("○") or part.startswith("✓"):
-                    document.add_paragraph(part)
-                elif "**" in part:  # Format headings with <b> tags
-                    part = part.replace("**", "").strip()
-                    document.add_heading(part, level=2)
+            # Add notes text to Word document with structured formatting
+            lines = notes_text.split("\n")
+            for line in lines:
+                if line.startswith("●") or line.startswith("○") or line.startswith("✓"):
+                    paragraph = document.add_paragraph(line)
+                    paragraph.style.font.size = Pt(12)
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+
+                elif "**" in line:  # Headings
+                    heading_text = line.replace("**", "").strip()
+                    heading = document.add_heading(level=2)
+                    run = heading.add_run(heading_text)
+                    run.font.size = Pt(14)
+                    run.font.color.rgb = RGBColor(0, 51, 102)  # Dark blue
+                    run.bold = True
+
+                elif "*" in line:  # Subheadings with bullets
+                    subheading = document.add_paragraph(style="List Bullet")
+                    subheading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    run = subheading.add_run(line.replace("*", "").strip())
+                    run.font.size = Pt(12)
+                    run.font.color.rgb = RGBColor(51, 102, 0)  # Dark green
+                    run.bold = True
                 else:
-                    document.add_paragraph(part)
+                    # Regular text with bullets
+                    paragraph = document.add_paragraph(line, style="List Bullet")
+                    paragraph.style.font.size = Pt(12)
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
 
             # Save Word document
             word_file = io.BytesIO()
@@ -70,8 +87,8 @@ async def pdf_handler(client: Client, message: Message):
             await client.send_document(
                 chat_id=message.chat.id,
                 document=word_file,
-                file_name="Notes.docx",
-                caption="Here are your notes in Microsoft Word format."
+                file_name="Formatted_Notes.docx",
+                caption="Here are your notes in a structured Microsoft Word format."
             )
 
         except Exception as e:
