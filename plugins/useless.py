@@ -63,7 +63,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Baskerville Old Face'
                     run.font.size = Pt(28)
                     run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
-                    run.bold = True
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                     heading.paragraph_format.space_after = Pt(0)
                     heading.paragraph_format.space_before = Pt(0)
@@ -75,7 +74,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 128, 0)  # Green
-                    run.bold = True
                     heading.style = 'List Bullet'
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
@@ -88,7 +86,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
-                    run.bold = True
                     heading.style = 'List Bullet 2'
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
@@ -101,7 +98,6 @@ async def pdf_handler(client: Client, message: Message):
                     run.font.name = 'Tahoma'
                     run.font.size = Pt(15)
                     run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                    run.bold = True
                     heading.style = 'List Bullet 3'
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                     heading.paragraph_format.space_after = Pt(0)
