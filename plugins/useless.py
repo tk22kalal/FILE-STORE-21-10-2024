@@ -1,20 +1,22 @@
+
+
+# Configure Google Gemini API and Vision
+genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
+
 from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
-from pyrogram.enums import ParseMode
 from pyrogram import Client
 import io
 from google.cloud import vision
 import google.generativeai as genai
 from docx import Document
 from docx.shared import Pt, RGBColor
-from docx.oxml.ns import qn
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml.ns import qn
 import pdf2image
 
-# Configure Google Gemini API and Vision
-genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
@@ -40,7 +42,7 @@ async def pdf_handler(client: Client, message: Message):
 
             # Generate notes format using Gemini AI
             formatted_prompt = (
-                "Convert the following content into a structured point wise format with ms word bullet points, "
+                "Convert the following content into a structured notes format with bullet points, "
                 "using simple language. Organize into sections with headings and subheadings:\n\n" + pdf_text
             )
             model = genai.GenerativeModel(
@@ -50,34 +52,69 @@ async def pdf_handler(client: Client, message: Message):
             response = model.generate_content([formatted_prompt])
             notes_text = response.text
 
-            # Add notes text to Word document with structured formatting
+            # Add notes text to Word document with specified formatting and minimal spacing
             lines = notes_text.split("\n")
             for line in lines:
-                if line.startswith("●") or line.startswith("○") or line.startswith("✓"):
-                    paragraph = document.add_paragraph(line)
-                    paragraph.style.font.size = Pt(12)
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-
-                elif "**" in line:  # Headings
-                    heading_text = line.replace("**", "").strip()
-                    heading = document.add_heading(level=2)
-                    run = heading.add_run(heading_text)
-                    run.font.size = Pt(14)
-                    run.font.color.rgb = RGBColor(0, 51, 102)  # Dark blue
+                if line.startswith("MAIN:"):
+                    # Main Heading formatting
+                    heading = document.add_heading(level=1)
+                    run = heading.add_run(line.replace("MAIN:", "").strip())
+                    run.font.name = 'Baskerville Old Face'
+                    run.font.size = Pt(28)
+                    run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
                     run.bold = True
+                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    heading.paragraph_format.space_after = Pt(0)
+                    heading.paragraph_format.space_before = Pt(0)
 
-                elif "*" in line:  # Subheadings with bullets
-                    subheading = document.add_paragraph(style="List Bullet")
-                    subheading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                    run = subheading.add_run(line.replace("*", "").strip())
-                    run.font.size = Pt(12)
-                    run.font.color.rgb = RGBColor(51, 102, 0)  # Dark green
+                elif line.startswith("H2:"):
+                    # H2 Heading formatting
+                    heading = document.add_paragraph()
+                    run = heading.add_run(line.replace("H2:", "").strip())
+                    run.font.name = 'Tahoma'
+                    run.font.size = Pt(15)
+                    run.font.color.rgb = RGBColor(0, 128, 0)  # Green
                     run.bold = True
+                    heading.style = 'List Bullet'
+                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    heading.paragraph_format.space_after = Pt(0)
+                    heading.paragraph_format.space_before = Pt(0)
+
+                elif line.startswith("H3:"):
+                    # H3 Heading formatting
+                    heading = document.add_paragraph()
+                    run = heading.add_run(line.replace("H3:", "").strip())
+                    run.font.name = 'Tahoma'
+                    run.font.size = Pt(15)
+                    run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+                    run.bold = True
+                    heading.style = 'List Bullet 2'
+                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    heading.paragraph_format.space_after = Pt(0)
+                    heading.paragraph_format.space_before = Pt(0)
+
+                elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
+                    # H4 Heading or highlighted word formatting
+                    heading = document.add_paragraph()
+                    run = heading.add_run(line.replace("H4:", "").replace("HIGHLIGHT:", "").strip())
+                    run.font.name = 'Tahoma'
+                    run.font.size = Pt(15)
+                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                    run.bold = True
+                    heading.style = 'List Bullet 3'
+                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    heading.paragraph_format.space_after = Pt(0)
+                    heading.paragraph_format.space_before = Pt(0)
+
                 else:
-                    # Regular text with bullets
-                    paragraph = document.add_paragraph(line, style="List Bullet")
-                    paragraph.style.font.size = Pt(12)
+                    # Normal Paragraph Text
+                    paragraph = document.add_paragraph(line.strip())
+                    paragraph.style.font.size = Pt(13)
+                    paragraph.style.font.name = 'Tahoma'
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                    paragraph.style = 'List Bullet' if line.strip() else 'Normal'
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.paragraph_format.space_before = Pt(0)
 
             # Save Word document
             word_file = io.BytesIO()
@@ -96,3 +133,5 @@ async def pdf_handler(client: Client, message: Message):
             print(f"Error processing PDF: {e}")
     else:
         await message.reply("Please upload a PDF document.")
+
+
