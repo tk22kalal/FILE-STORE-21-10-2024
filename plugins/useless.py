@@ -1,4 +1,6 @@
 
+
+
 from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
@@ -7,14 +9,14 @@ import io
 from google.cloud import vision
 import google.generativeai as genai
 from docx import Document
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import Pt
+from docx.oxml.ns import nsdecls
+from docx.oxml import parse_xml
 import pdf2image
 
+# Configure Google Gemini API and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
-
-
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
@@ -57,38 +59,39 @@ async def pdf_handler(client: Client, message: Message):
                     # Main Heading formatting
                     heading = document.add_paragraph()
                     run = heading.add_run(line.replace("MAIN:", "").strip())
-                    run.font.name = 'Baskerville Old Face'
+                    run.font.bold = True
                     run.font.size = Pt(28)
-                    run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
-                    run.bold = True
+                    run.font.name = 'Baskerville Old Face'
                     heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    shading_elm = parse_xml(r'<w:shd {} w:fill="B0C4DE"/>'.format(nsdecls('w')))
+                    heading._element.get_or_add_tcPr().append(shading_elm)
 
                 elif line.startswith("H2:"):
                     # H2 Heading formatting
                     heading = document.add_paragraph()
                     run = heading.add_run(line.replace("H2:", "").strip())
-                    run.font.name = 'Tahoma'
+                    run.font.bold = True
                     run.font.size = Pt(15)
+                    run.font.name = 'Tahoma'
                     run.font.color.rgb = RGBColor(0, 128, 0)  # Green
-                    run.bold = True
 
                 elif line.startswith("H3:"):
                     # H3 Heading formatting
                     heading = document.add_paragraph()
                     run = heading.add_run(line.replace("H3:", "").strip())
-                    run.font.name = 'Tahoma'
+                    run.font.bold = True
                     run.font.size = Pt(15)
+                    run.font.name = 'Tahoma'
                     run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
-                    run.bold = True
 
                 elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
                     # H4 Heading or highlighted word formatting
                     heading = document.add_paragraph()
                     run = heading.add_run(line.replace("H4:", "").replace("HIGHLIGHT:", "").strip())
-                    run.font.name = 'Tahoma'
+                    run.font.bold = True
                     run.font.size = Pt(15)
+                    run.font.name = 'Tahoma'
                     run.font.color.rgb = RGBColor(0, 0, 0)  # Black
-                    run.bold = True
 
                 else:
                     # Normal Paragraph Text
@@ -119,4 +122,3 @@ async def pdf_handler(client: Client, message: Message):
             print(f"Error processing PDF: {e}")
     else:
         await message.reply("Please upload a PDF document.")
-
