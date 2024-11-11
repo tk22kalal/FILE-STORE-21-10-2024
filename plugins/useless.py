@@ -21,6 +21,9 @@ vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/g
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text via OCR, convert to notes format, and send as a formatted Word document."""
     if message.document.file_name.endswith(".pdf"):
+        # Send temporary "Processing..." message
+        processing_message = await client.send_message(chat_id=message.chat.id, text="Processing...")
+
         file_id = message.document.file_id
         file = await client.download_media(file_id)
         
@@ -42,8 +45,7 @@ async def pdf_handler(client: Client, message: Message):
                     "Explain the following content in point-wise, easy language:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
-                    model_name="gemini-pro",
-                    generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 3000}
+                    model_name="gemini-pro"
                 )
                 response = model.generate_content([formatted_prompt])
                 notes_text = response.text
@@ -116,8 +118,12 @@ async def pdf_handler(client: Client, message: Message):
                 caption="Here are your notes in a structured Microsoft Word format."
             )
 
+            # Delete temporary processing message
+            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.message_id])
+
         except Exception as e:
             await message.reply("Error processing the PDF. Please try again.")
             print(f"Error processing PDF: {e}")
+            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.message_id])
     else:
         await message.reply("Please upload a PDF document.")
