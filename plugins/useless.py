@@ -92,7 +92,7 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.name = 'Tahoma'
 
                     # Set minimal spacing for all paragraphs
-                    paragraph_format = paragraph.paragraph_format
+                    paragraph_format = heading.paragraph_format if 'heading' in locals() else paragraph.paragraph_format
                     paragraph_format.space_after = Pt(1)
                     paragraph_format.space_before = Pt(1)
 
