@@ -1,6 +1,3 @@
-
-
-
 from bot import Bot
 from pyrogram.types import Message
 from pyrogram import filters
@@ -9,10 +6,12 @@ import io
 from google.cloud import vision
 import google.generativeai as genai
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 import pdf2image
+import asyncio
 
 # Configure Google Gemini API and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
@@ -26,7 +25,6 @@ async def pdf_handler(client: Client, message: Message):
         file = await client.download_media(file_id)
         
         document = Document()
-        pdf_text = ""
 
         try:
             # Convert each page to image and perform OCR
@@ -38,72 +36,73 @@ async def pdf_handler(client: Client, message: Message):
                 
                 ocr_response = vision_client.text_detection(image=vision_image)
                 ocr_text = ocr_response.full_text_annotation.text
-                pdf_text += f"Page {page_num + 1}:\n{ocr_text}\n\n"
 
-            # Generate notes format using Gemini AI
-            formatted_prompt = (
-                "Convert the following content into a structured notes format with bullet points, "
-                "using simple language. Organize into sections with headings and subheadings:\n\n" + pdf_text
-            )
-            model = genai.GenerativeModel(
-                model_name="gemini-pro",
-                generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 3000}
-            )
-            response = model.generate_content([formatted_prompt])
-            notes_text = response.text
+                # Generate notes format using Gemini AI for the current page
+                formatted_prompt = (
+                    "Explain the following content in point-wise, easy language:\n\n" + ocr_text
+                )
+                model = genai.GenerativeModel(
+                    model_name="gemini-pro",
+                    generation_config={"temperature": 0.8, "top_p": 1, "top_k": 1, "max_output_tokens": 3000}
+                )
+                response = model.generate_content([formatted_prompt])
+                notes_text = response.text
 
-            # Add notes text to Word document with specified formatting and minimal spacing
-            lines = notes_text.split("\n")
-            for line in lines:
-                if line.startswith("MAIN:"):
-                    # Main Heading formatting
-                    heading = document.add_paragraph()
-                    run = heading.add_run(line.replace("MAIN:", "").strip())
-                    run.font.bold = True
-                    run.font.size = Pt(28)
-                    run.font.name = 'Baskerville Old Face'
-                    heading.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    shading_elm = parse_xml(r'<w:shd {} w:fill="B0C4DE"/>'.format(nsdecls('w')))
-                    heading._element.get_or_add_tcPr().append(shading_elm)
+                # Add notes text to Word document with specified formatting and minimal spacing
+                lines = notes_text.split("\n")
+                for line in lines:
+                    if line.startswith("MAIN:"):
+                        # Main Heading formatting
+                        heading = document.add_paragraph()
+                        run = heading.add_run(line.replace("MAIN:", "").strip())
+                        run.font.bold = True
+                        run.font.size = Pt(28)
+                        run.font.name = 'Baskerville Old Face'
+                        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        shading_elm = parse_xml(r'<w:shd {} w:fill="B0C4DE"/>'.format(nsdecls('w')))
+                        heading._element.get_or_add_tcPr().append(shading_elm)
 
-                elif line.startswith("H2:"):
-                    # H2 Heading formatting
-                    heading = document.add_paragraph()
-                    run = heading.add_run(line.replace("H2:", "").strip())
-                    run.font.bold = True
-                    run.font.size = Pt(15)
-                    run.font.name = 'Tahoma'
-                    run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+                    elif line.startswith("H2:"):
+                        # H2 Heading formatting
+                        heading = document.add_paragraph()
+                        run = heading.add_run(line.replace("H2:", "").strip())
+                        run.font.bold = True
+                        run.font.size = Pt(15)
+                        run.font.name = 'Tahoma'
+                        run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
-                elif line.startswith("H3:"):
-                    # H3 Heading formatting
-                    heading = document.add_paragraph()
-                    run = heading.add_run(line.replace("H3:", "").strip())
-                    run.font.bold = True
-                    run.font.size = Pt(15)
-                    run.font.name = 'Tahoma'
-                    run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+                    elif line.startswith("H3:"):
+                        # H3 Heading formatting
+                        heading = document.add_paragraph()
+                        run = heading.add_run(line.replace("H3:", "").strip())
+                        run.font.bold = True
+                        run.font.size = Pt(15)
+                        run.font.name = 'Tahoma'
+                        run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
-                elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
-                    # H4 Heading or highlighted word formatting
-                    heading = document.add_paragraph()
-                    run = heading.add_run(line.replace("H4:", "").replace("HIGHLIGHT:", "").strip())
-                    run.font.bold = True
-                    run.font.size = Pt(15)
-                    run.font.name = 'Tahoma'
-                    run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                    elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
+                        # H4 Heading or highlighted word formatting
+                        heading = document.add_paragraph()
+                        run = heading.add_run(line.replace("H4:", "").replace("HIGHLIGHT:", "").strip())
+                        run.font.bold = True
+                        run.font.size = Pt(15)
+                        run.font.name = 'Tahoma'
+                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
 
-                else:
-                    # Normal Paragraph Text
-                    paragraph = document.add_paragraph()
-                    run = paragraph.add_run(line.strip())
-                    run.font.size = Pt(13)
-                    run.font.name = 'Tahoma'
+                    else:
+                        # Normal Paragraph Text
+                        paragraph = document.add_paragraph()
+                        run = paragraph.add_run(line.strip())
+                        run.font.size = Pt(13)
+                        run.font.name = 'Tahoma'
 
-                # Set minimal spacing for all paragraphs
-                paragraph_format = heading.paragraph_format if line.startswith(("MAIN:", "H2:", "H3:", "H4:", "HIGHLIGHT:")) else paragraph.paragraph_format
-                paragraph_format.space_after = Pt(1)
-                paragraph_format.space_before = Pt(1)
+                    # Set minimal spacing for all paragraphs
+                    paragraph_format = heading.paragraph_format if line.startswith(("MAIN:", "H2:", "H3:", "H4:", "HIGHLIGHT:")) else paragraph.paragraph_format
+                    paragraph_format.space_after = Pt(1)
+                    paragraph_format.space_before = Pt(1)
+
+                # Rest between pages to avoid hitting API limits or overloading
+                await asyncio.sleep(2)
 
             # Save Word document
             word_file = io.BytesIO()
