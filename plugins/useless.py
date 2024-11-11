@@ -61,8 +61,8 @@ async def pdf_handler(client: Client, message: Message):
                         heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                     elif line.startswith("***"):
-                        # H2 Heading formatting
-                        heading = document.add_paragraph()
+                        # H2 Heading formatting with numbered bullets
+                        heading = document.add_paragraph(style='ListNumber')
                         run = heading.add_run(line.replace("***", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -70,8 +70,8 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
                     elif line.startswith("##"):
-                        # H3 Heading formatting
-                        heading = document.add_paragraph()
+                        # H3 Heading formatting with black circle bullets
+                        heading = document.add_paragraph(style='ListBullet')
                         run = heading.add_run(line.replace("##", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -79,24 +79,20 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
                     elif line.startswith("*"):
-                        # Bullet point formatting
-                        bullet = document.add_paragraph(style='ListBullet')
-                        run = bullet.add_run(line.replace("*", "").strip())
+                        # Normal Paragraph Text with hollow sphere bullets
+                        paragraph = document.add_paragraph(style='ListBullet')
+                        run = paragraph.add_run(line.replace("*", "").strip())
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
 
                     else:
-                        # Normal Paragraph Text
                         paragraph = document.add_paragraph()
                         run = paragraph.add_run(line.strip())
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
 
                     # Set minimal spacing for all paragraphs
-                    if line.startswith(("###", "***", "##", "*")):
-                        paragraph_format = heading.paragraph_format if line.startswith(("###", "***", "##")) else bullet.paragraph_format
-                    else:
-                        paragraph_format = paragraph.paragraph_format
+                    paragraph_format = paragraph.paragraph_format
                     paragraph_format.space_after = Pt(1)
                     paragraph_format.space_before = Pt(1)
 
