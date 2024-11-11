@@ -61,8 +61,6 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.size = Pt(28)
                         run.font.name = 'Baskerville Old Face'
                         heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        shading_elm = parse_xml(r'<w:shd {} w:fill="B0C4DE"/>'.format(nsdecls('w')))
-                        heading._element.get_or_add_tcPr().append(shading_elm)
 
                     elif line.startswith("**"):
                         # H2 Heading formatting
@@ -119,11 +117,11 @@ async def pdf_handler(client: Client, message: Message):
             )
 
             # Delete temporary processing message
-            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.message_id])
+            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.id])
 
         except Exception as e:
             await message.reply("Error processing the PDF. Please try again.")
             print(f"Error processing PDF: {e}")
-            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.message_id])
+            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.id])
     else:
         await message.reply("Please upload a PDF document.")
