@@ -42,7 +42,7 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language. Use * for main headings, ** for headings, *** for subheadings, and no symbol for normal paragraphs:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
@@ -53,10 +53,10 @@ async def pdf_handler(client: Client, message: Message):
                 # Add notes text to Word document with specified formatting and minimal spacing
                 lines = notes_text.split("\n")
                 for line in lines:
-                    if line.startswith("MAIN:"):
+                    if line.startswith("*"):
                         # Main Heading formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("MAIN:", "").strip())
+                        run = heading.add_run(line.replace("*", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(28)
                         run.font.name = 'Baskerville Old Face'
@@ -64,28 +64,28 @@ async def pdf_handler(client: Client, message: Message):
                         shading_elm = parse_xml(r'<w:shd {} w:fill="B0C4DE"/>'.format(nsdecls('w')))
                         heading._element.get_or_add_tcPr().append(shading_elm)
 
-                    elif line.startswith("H2:"):
+                    elif line.startswith("**"):
                         # H2 Heading formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("H2:", "").strip())
+                        run = heading.add_run(line.replace("**", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
                         run.font.name = 'Tahoma'
                         run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
-                    elif line.startswith("H3:"):
+                    elif line.startswith("***"):
                         # H3 Heading formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("H3:", "").strip())
+                        run = heading.add_run(line.replace("***", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
                         run.font.name = 'Tahoma'
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
-                    elif line.startswith("H4:") or line.startswith("HIGHLIGHT:"):
-                        # H4 Heading or highlighted word formatting
+                    elif line.startswith("HIGHLIGHT:"):
+                        # Highlighted text formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("H4:", "").replace("HIGHLIGHT:", "").strip())
+                        run = heading.add_run(line.replace("HIGHLIGHT:", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
                         run.font.name = 'Tahoma'
@@ -99,7 +99,7 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.name = 'Tahoma'
 
                     # Set minimal spacing for all paragraphs
-                    paragraph_format = heading.paragraph_format if line.startswith(("MAIN:", "H2:", "H3:", "H4:", "HIGHLIGHT:")) else paragraph.paragraph_format
+                    paragraph_format = heading.paragraph_format if line.startswith(("*", "**", "***", "HIGHLIGHT:")) else paragraph.paragraph_format
                     paragraph_format.space_after = Pt(1)
                     paragraph_format.space_before = Pt(1)
 
