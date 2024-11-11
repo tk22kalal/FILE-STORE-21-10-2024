@@ -8,8 +8,6 @@ import google.generativeai as genai
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import nsdecls
-from docx.oxml import parse_xml
 import pdf2image
 import asyncio
 
@@ -42,7 +40,7 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language. Use * for main headings, ** for headings, *** for subheadings, and no symbol for normal paragraphs:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language. Use ### for main headings, *** for headings, ## for subheadings, and * for normal paragraphs:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
@@ -53,41 +51,39 @@ async def pdf_handler(client: Client, message: Message):
                 # Add notes text to Word document with specified formatting and minimal spacing
                 lines = notes_text.split("\n")
                 for line in lines:
-                    if line.startswith("*"):
+                    if line.startswith("###"):
                         # Main Heading formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("*", "").strip())
+                        run = heading.add_run(line.replace("###", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(28)
                         run.font.name = 'Baskerville Old Face'
                         heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-                    elif line.startswith("**"):
-                        # H2 Heading formatting
-                        heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("**", "").strip())
-                        run.font.bold = True
-                        run.font.size = Pt(15)
-                        run.font.name = 'Tahoma'
-                        run.font.color.rgb = RGBColor(0, 128, 0)  # Green
-
                     elif line.startswith("***"):
-                        # H3 Heading formatting
+                        # H2 Heading formatting
                         heading = document.add_paragraph()
                         run = heading.add_run(line.replace("***", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
                         run.font.name = 'Tahoma'
-                        run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+                        run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
-                    elif line.startswith("HIGHLIGHT:"):
-                        # Highlighted text formatting
+                    elif line.startswith("##"):
+                        # H3 Heading formatting
                         heading = document.add_paragraph()
-                        run = heading.add_run(line.replace("HIGHLIGHT:", "").strip())
+                        run = heading.add_run(line.replace("##", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
                         run.font.name = 'Tahoma'
-                        run.font.color.rgb = RGBColor(0, 0, 0)  # Black
+                        run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
+
+                    elif line.startswith("*"):
+                        # Bullet point formatting
+                        bullet = document.add_paragraph(style='ListBullet')
+                        run = bullet.add_run(line.replace("*", "").strip())
+                        run.font.size = Pt(13)
+                        run.font.name = 'Tahoma'
 
                     else:
                         # Normal Paragraph Text
@@ -97,7 +93,10 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.name = 'Tahoma'
 
                     # Set minimal spacing for all paragraphs
-                    paragraph_format = heading.paragraph_format if line.startswith(("*", "**", "***", "HIGHLIGHT:")) else paragraph.paragraph_format
+                    if line.startswith(("###", "***", "##", "*")):
+                        paragraph_format = heading.paragraph_format if line.startswith(("###", "***", "##")) else bullet.paragraph_format
+                    else:
+                        paragraph_format = paragraph.paragraph_format
                     paragraph_format.space_after = Pt(1)
                     paragraph_format.space_before = Pt(1)
 
