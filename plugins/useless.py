@@ -91,47 +91,16 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.name = 'Tahoma'
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
-                    elif line.startswith("*"):
+                    elif line.startswith("*") or line.startswith("-"):
                         # Normal Paragraph Text with further indent
                         paragraph = document.add_paragraph(style='ListBullet')
                         paragraph_format = paragraph.paragraph_format
                         paragraph_format.left_indent = Pt(15)  # Further indent
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
-                        line = line.replace("*", "").strip()
-
-                        # Process **bold** formatting
-                        parts = re.split(r'(\*\*[^*]+\*\*)', line)
-                        for part in parts:
-                            if part.startswith("**") and part.endswith("**"):
-                                bold_text = part.replace("**", "")
-                                run = paragraph.add_run(bold_text)
-                                run.font.bold = True  # Strong bold
-                            else:
-                                run = paragraph.add_run(part)
-                            run.font.size = Pt(13)
-                            run.font.name = 'Tahoma'
-
-                    elif line.startswith("-"):
-                        # Normal Paragraph Text with further indent for hyphenated bullets
-                        paragraph = document.add_paragraph(style='ListBullet')
-                        paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(15)  # Further indent
-                        paragraph_format.space_before = Pt(0)
-                        paragraph_format.space_after = Pt(1)
-                        line = line.replace("-", "").strip()
-
-                        # Process **bold** formatting
-                        parts = re.split(r'(\*\*[^*]+\*\*)', line)
-                        for part in parts:
-                            if part.startswith("**") and part.endswith("**"):
-                                bold_text = part.replace("**", "")
-                                run = paragraph.add_run(bold_text)
-                                run.font.bold = True  # Strong bold
-                            else:
-                                run = paragraph.add_run(part)
-                            run.font.size = Pt(13)
-                            run.font.name = 'Tahoma'
+                        run = paragraph.add_run(line[1:].strip())  # Remove * or - for bullet points
+                        run.font.size = Pt(13)
+                        run.font.name = 'Tahoma'
 
                     else:
                         paragraph = document.add_paragraph()
@@ -145,6 +114,21 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Rest between pages to avoid hitting API limits or overloading
                 await asyncio.sleep(2)
+
+            # Post-process document for **bold** text formatting
+            for paragraph in document.paragraphs:
+                # Find all occurrences of **bold text**
+                parts = re.split(r'(\*\*[^*]+\*\*)', paragraph.text)
+                paragraph.clear()
+                for part in parts:
+                    if part.startswith("**") and part.endswith("**"):
+                        bold_text = part.replace("**", "")
+                        run = paragraph.add_run(bold_text)
+                        run.font.bold = True  # Strong bold
+                    else:
+                        run = paragraph.add_run(part)
+                    run.font.size = Pt(13)
+                    run.font.name = 'Tahoma'
 
             # Save Word document
             word_file = io.BytesIO()
