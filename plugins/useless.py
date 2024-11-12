@@ -14,7 +14,7 @@ import re
 
 # Configure Google Gemini API and Vision
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
-vision_client = vision.ImageAnnotatorClient.from_service_account_file("YOUR_SERVICE_ACCOUNT_FILE.json")
+vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
