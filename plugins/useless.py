@@ -40,7 +40,7 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language. Use ### for main headings, *** for headings, ## for subheadings, and * for normal paragraphs:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language as identify Main Heading, Headings, Sub-headings and Key Points, Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clearn Headinggs. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
