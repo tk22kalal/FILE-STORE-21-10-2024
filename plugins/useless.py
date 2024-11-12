@@ -91,14 +91,14 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.name = 'Tahoma'
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
-                    elif line.startswith("*") or line.startswith("-"):
+                    elif line.startswith("-"):
                         # Normal Paragraph Text with further indent
                         paragraph = document.add_paragraph(style='List Bullet')
                         paragraph_format = paragraph.paragraph_format
                         paragraph_format.left_indent = Pt(15)  # Further indent
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
-                        run = paragraph.add_run(line[1:].strip())  # Remove * or - for bullet points
+                        run = paragraph.add_run(line.replace("-", "").strip())  # Remove * or - for bullet points
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
 
