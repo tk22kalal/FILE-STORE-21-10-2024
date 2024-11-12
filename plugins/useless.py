@@ -40,7 +40,7 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language as identify Main Heading, Headings, Sub-headings and Key Points, Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clearn Headinggs. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points, Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clear Headings. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
@@ -52,8 +52,12 @@ async def pdf_handler(client: Client, message: Message):
                 lines = notes_text.split("\n")
                 for line in lines:
                     if line.startswith("###"):
-                        # Main Heading formatting
+                        # Main Heading formatting with zero left indent
                         heading = document.add_paragraph()
+                        heading_format = heading.paragraph_format
+                        heading_format.left_indent = Pt(0)
+                        heading_format.space_before = Pt(0)
+                        heading_format.space_after = Pt(0)
                         run = heading.add_run(line.replace("###", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(28)
@@ -61,8 +65,12 @@ async def pdf_handler(client: Client, message: Message):
                         heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                     elif line.startswith("***"):
-                        # H2 Heading formatting with numbered bullets
+                        # H2 Heading formatting with slight indent
                         heading = document.add_paragraph(style='ListNumber')
+                        heading_format = heading.paragraph_format
+                        heading_format.left_indent = Pt(5)  # Slight indent
+                        heading_format.space_before = Pt(0)
+                        heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("***", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -70,8 +78,12 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
                     elif line.startswith("##"):
-                        # H3 Heading formatting with black circle bullets
+                        # H3 Subheading formatting with moderate indent
                         heading = document.add_paragraph(style='ListBullet')
+                        heading_format = heading.paragraph_format
+                        heading_format.left_indent = Pt(10)  # Moderate indent
+                        heading_format.space_before = Pt(0)
+                        heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("##", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -79,22 +91,25 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
                     elif line.startswith("*"):
-                        # Normal Paragraph Text with hollow sphere bullets
+                        # Normal Paragraph Text with further indent
                         paragraph = document.add_paragraph(style='ListBullet')
+                        paragraph_format = paragraph.paragraph_format
+                        paragraph_format.left_indent = Pt(15)  # Further indent
+                        paragraph_format.space_before = Pt(0)
+                        paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line.replace("*", "").strip())
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
 
                     else:
                         paragraph = document.add_paragraph()
+                        paragraph_format = paragraph.paragraph_format
+                        paragraph_format.left_indent = Pt(15)  # Further indent for non-marked text
+                        paragraph_format.space_before = Pt(0)
+                        paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line.strip())
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
-
-                    # Set minimal spacing for all paragraphs
-                    paragraph_format = heading.paragraph_format if 'heading' in locals() else paragraph.paragraph_format
-                    paragraph_format.space_after = Pt(1)
-                    paragraph_format.space_before = Pt(1)
 
                 # Rest between pages to avoid hitting API limits or overloading
                 await asyncio.sleep(2)
