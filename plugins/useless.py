@@ -41,7 +41,7 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points, Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clear Headings. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points. Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clear Headings. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
@@ -69,7 +69,7 @@ async def pdf_handler(client: Client, message: Message):
                         # H2 Heading formatting with slight indent
                         heading = document.add_paragraph(style='ListNumber')
                         heading_format = heading.paragraph_format
-                        heading_format.left_indent = Pt(5)  # Slight indent
+                        heading_format.left_indent = Pt(0)  # Slight indent
                         heading_format.space_before = Pt(0)
                         heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("***", "").strip())
@@ -82,7 +82,7 @@ async def pdf_handler(client: Client, message: Message):
                         # H3 Subheading formatting with moderate indent
                         heading = document.add_paragraph(style='ListBullet')
                         heading_format = heading.paragraph_format
-                        heading_format.left_indent = Pt(10)  # Moderate indent
+                        heading_format.left_indent = Pt(0)  # Moderate indent
                         heading_format.space_before = Pt(0)
                         heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("##", "").strip())
@@ -95,7 +95,7 @@ async def pdf_handler(client: Client, message: Message):
                         # Normal Paragraph Text with further indent
                         paragraph = document.add_paragraph(style='ListBullet')
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(15)  # Further indent
+                        paragraph_format.left_indent = Pt(0)  # Further indent
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line[1:].strip())  # Remove * or - for bullet points
@@ -105,7 +105,7 @@ async def pdf_handler(client: Client, message: Message):
                     else:
                         paragraph = document.add_paragraph()
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(15)  # Further indent for non-marked text
+                        paragraph_format.left_indent = Pt(0)  # Further indent for non-marked text
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line.strip())
