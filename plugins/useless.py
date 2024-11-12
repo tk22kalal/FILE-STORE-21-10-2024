@@ -41,9 +41,11 @@ async def pdf_handler(client: Client, message: Message):
 
                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points, Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clear Headings. Start each key point with bullet point. Use ### for main heading, *** for headings, ## for subheadings, and * for normal paragraph key points.:\n\n" + ocr_text
                 )
-                model = genai.GenerativeModel(model_name="gemini-pro")
+                model = genai.GenerativeModel(
+                    model_name="gemini-pro"
+                )
                 response = model.generate_content([formatted_prompt])
                 notes_text = response.text
 
@@ -51,6 +53,7 @@ async def pdf_handler(client: Client, message: Message):
                 lines = notes_text.split("\n")
                 for line in lines:
                     if line.startswith("###"):
+                        # Main Heading formatting with zero left indent
                         heading = document.add_paragraph()
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)
@@ -63,9 +66,10 @@ async def pdf_handler(client: Client, message: Message):
                         heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                     elif line.startswith("***"):
+                        # H2 Heading formatting with slight indent
                         heading = document.add_paragraph(style='ListNumber')
                         heading_format = heading.paragraph_format
-                        heading_format.left_indent = Pt(5)
+                        heading_format.left_indent = Pt(5)  # Slight indent
                         heading_format.space_before = Pt(0)
                         heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("***", "").strip())
@@ -75,9 +79,10 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
                     elif line.startswith("##"):
+                        # H3 Subheading formatting with moderate indent
                         heading = document.add_paragraph(style='ListBullet')
                         heading_format = heading.paragraph_format
-                        heading_format.left_indent = Pt(10)
+                        heading_format.left_indent = Pt(10)  # Moderate indent
                         heading_format.space_before = Pt(0)
                         heading_format.space_after = Pt(1)
                         run = heading.add_run(line.replace("##", "").strip())
@@ -87,17 +92,13 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.color.rgb = RGBColor(255, 165, 0)  # Orange
 
                     elif line.startswith("*"):
-                        # Normal Paragraph Text with hollow sphere bullets and bold formatting for **words**
+                        # Normal Paragraph Text with further indent
                         paragraph = document.add_paragraph(style='ListBullet')
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(15)
+                        paragraph_format.left_indent = Pt(15)  # Further indent
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         line = line.replace("*", "").strip()
-
-                        # Replace hyphen at start with a hollow sphere bullet
-                        if line.startswith("-"):
-                            line = line.replace("-", "", 1).strip()
 
                         # Process **bold** formatting
                         parts = re.split(r'(\*\*[^*]+\*\*)', line)
@@ -105,7 +106,28 @@ async def pdf_handler(client: Client, message: Message):
                             if part.startswith("**") and part.endswith("**"):
                                 bold_text = part.replace("**", "")
                                 run = paragraph.add_run(bold_text)
-                                run.font.bold = True
+                                run.font.bold = True  # Strong bold
+                            else:
+                                run = paragraph.add_run(part)
+                            run.font.size = Pt(13)
+                            run.font.name = 'Tahoma'
+
+                    elif line.startswith("-"):
+                        # Normal Paragraph Text with further indent for hyphenated bullets
+                        paragraph = document.add_paragraph(style='ListBullet')
+                        paragraph_format = paragraph.paragraph_format
+                        paragraph_format.left_indent = Pt(15)  # Further indent
+                        paragraph_format.space_before = Pt(0)
+                        paragraph_format.space_after = Pt(1)
+                        line = line.replace("-", "").strip()
+
+                        # Process **bold** formatting
+                        parts = re.split(r'(\*\*[^*]+\*\*)', line)
+                        for part in parts:
+                            if part.startswith("**") and part.endswith("**"):
+                                bold_text = part.replace("**", "")
+                                run = paragraph.add_run(bold_text)
+                                run.font.bold = True  # Strong bold
                             else:
                                 run = paragraph.add_run(part)
                             run.font.size = Pt(13)
@@ -114,7 +136,7 @@ async def pdf_handler(client: Client, message: Message):
                     else:
                         paragraph = document.add_paragraph()
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(15)
+                        paragraph_format.left_indent = Pt(15)  # Further indent for non-marked text
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line.strip())
