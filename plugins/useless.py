@@ -67,7 +67,7 @@ async def pdf_handler(client: Client, message: Message):
 
                     elif line.startswith("***"):
                         # H2 Heading formatting with slight indent
-                        heading = document.add_paragraph(style='ListNumber')
+                        heading = document.add_paragraph(style='Heading 2')
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)  # Slight indent
                         heading_format.space_before = Pt(0)
@@ -80,7 +80,7 @@ async def pdf_handler(client: Client, message: Message):
 
                     elif line.startswith("##"):
                         # H3 Subheading formatting with moderate indent
-                        heading = document.add_paragraph(style='ListBullet')
+                        heading = document.add_paragraph(style='Heading 3')
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)  # Moderate indent
                         heading_format.space_before = Pt(0)
@@ -93,9 +93,9 @@ async def pdf_handler(client: Client, message: Message):
 
                     elif line.startswith("*") or line.startswith("-"):
                         # Normal Paragraph Text with further indent
-                        paragraph = document.add_paragraph(style='ListBullet')
+                        paragraph = document.add_paragraph(style='List Bullet')
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(0)  # Further indent
+                        paragraph_format.left_indent = Pt(15)  # Further indent
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line[1:].strip())  # Remove * or - for bullet points
@@ -105,7 +105,7 @@ async def pdf_handler(client: Client, message: Message):
                     else:
                         paragraph = document.add_paragraph()
                         paragraph_format = paragraph.paragraph_format
-                        paragraph_format.left_indent = Pt(0)  # Further indent for non-marked text
+                        paragraph_format.left_indent = Pt(15)  # Further indent for non-marked text
                         paragraph_format.space_before = Pt(0)
                         paragraph_format.space_after = Pt(1)
                         run = paragraph.add_run(line.strip())
