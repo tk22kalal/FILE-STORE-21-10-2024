@@ -40,8 +40,14 @@ async def pdf_handler(client: Client, message: Message):
                 ocr_text = ocr_response.full_text_annotation.text
 
                 # Generate notes format using Gemini AI for the current page
+                                # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language with Main Heading, Headings, Sub-headings, and Key Points. Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, Provide Clear Headings. Start each key point with bullet point such as hollow sphere or black circle and dont use * for key points or normal points . Use ### for main heading, *** for headings, ## for subheadings, and - for normal paragraph key points:\n\n" + ocr_text
+                    "Explain the following content in point-wise, easy language with Main Title, Headings, Sub-headings, Points, Key Points, and Sub-Points. "
+                    "Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, "
+                    "Provide Clear Headings. Highlight Important words with bold in each line. "
+                    "Use bulletins: Headings bulletins: number, Sub-heading bulletins: ★, Points bulletins: ●, Key-points bulletins: ⭘, Sub-Points bulletins: ◊. "
+                    "Replace * and - with bulletins according to the above bulletin arrangement. Use ### for main title, *** for headings, ## for subheadings, "
+                    "and - for normal paragraph key points:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
                     model_name="gemini-pro"
@@ -67,11 +73,11 @@ async def pdf_handler(client: Client, message: Message):
 
                     elif line.startswith("***"):
                         # H2 Heading formatting with slight indent
-                        heading = document.add_paragraph(style='Heading 2')
+                        heading = document.add_paragraph(style='Heading 1')
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)  # Slight indent
                         heading_format.space_before = Pt(0)
-                        heading_format.space_after = Pt(1)
+                        heading_format.space_after = Pt(0.5)
                         run = heading.add_run(line.replace("***", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -80,11 +86,11 @@ async def pdf_handler(client: Client, message: Message):
 
                     elif line.startswith("##"):
                         # H3 Subheading formatting with moderate indent
-                        heading = document.add_paragraph(style='Heading 3')
+                        heading = document.add_paragraph(style='Heading 2')
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)  # Moderate indent
                         heading_format.space_before = Pt(0)
-                        heading_format.space_after = Pt(1)
+                        heading_format.space_after = Pt(0.5)
                         run = heading.add_run(line.replace("##", "").strip())
                         run.font.bold = True
                         run.font.size = Pt(15)
@@ -107,7 +113,7 @@ async def pdf_handler(client: Client, message: Message):
                         paragraph_format = paragraph.paragraph_format
                         paragraph_format.left_indent = Pt(15)  # Further indent for non-marked text
                         paragraph_format.space_before = Pt(0)
-                        paragraph_format.space_after = Pt(1)
+                        paragraph_format.space_after = Pt(0.5)
                         run = paragraph.add_run(line.strip())
                         run.font.size = Pt(13)
                         run.font.name = 'Tahoma'
