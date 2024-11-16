@@ -45,7 +45,7 @@ async def pdf_handler(client: Client, message: Message):
                     "Explain the following content in point-wise, easy language with Main Title, Headings, Sub-headings, Points, Key Points, and Sub-Points. "
                     "Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, "
                     "Provide Clear Headings. Highlight **important words** with bold in each line using **,"
-                    "Use bulletins: Headings bulletins: number, Sub-heading bulletins: ⭘, Points bulletins: ●, Key-points bulletins: ★, Sub-Points bulletins: ◊. "
+                    "Use bulletins: Headings bulletins: number, Sub-heading bulletins: ✵, Points bulletins: ●, Key-points bulletins: ⭘, Sub-Points bulletins: ◊. "
                     "Replace * and - with bulletins according to the above bulletin arrangement. Use ### for main title, *** for headings, ## for subheadings, "
                     "and - for normal paragraph key points:\n\n" + ocr_text
                 )
