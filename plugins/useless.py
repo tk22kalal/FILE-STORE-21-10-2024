@@ -52,7 +52,7 @@ async def pdf_handler(client: Client, message: Message):
                     "and - for normal paragraph key points:\n\n" + ocr_text
                 )
                 response = openai.ChatCompletion.create(
-                    model="gpt-4",
+                    model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": formatted_prompt}
