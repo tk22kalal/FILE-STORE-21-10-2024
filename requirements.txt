@@ -8,7 +8,7 @@ dnspython
 # --- For-Web-Response ------- #
 aiohttp
 telethon==1.24.0
-openai
+openai==0.28
 googlesearch-python==1.0.1
 google
 google-generativeai
