@@ -44,22 +44,31 @@ async def pdf_handler(client: Client, message: Message):
                 # Generate notes format using Gemini AI for the current page
                                 # Generate notes format using Gemini AI for the current page
                 formatted_prompt = (
-                    "Explain the following content in point-wise, easy language with Main Title, Headings, Sub-headings, Points, Key Points, and Sub-Points. "
-                    "Simplify Language, Organize in Point-Wise Format, Maintain Original Meaning, "
-                    "Provide Clear Headings. Highlight **important words** with bold in each line using **,"
-                    "Use bulletins: Headings bulletins: number, Sub-heading bulletins: ☆, Points bulletins: ●, Key-points bulletins: ⭘, Sub-Points bulletins: ◊,"
-                    "Replace * and - with bulletins according to the above bulletin arrangement. Use ### for main title, *** for headings, ## for subheadings, "
-                    "and - for normal paragraph key points:\n\n" + ocr_text
+                    "Analyze the following content and perform the following tasks step by step:\n\n"
+                    "1. Identify and extract the **Main Title**, **Headings**, **Sub-headings**, and the structure of the content. Clearly mark each section using:\n"
+                    "   - Use '###' for Main Title.\n"
+                    "   - Use '***' for Headings.\n"
+                    "   - Use '##' for Sub-headings.\n"
+                    "   - Use '-' for normal paragraph key points.\n\n"
+                    "2. Simplify and Explain the content into **point-wise format** under each identified section, while maintaining the **original meaning**.\n"
+                    "   - Organize the points clearly and concisely.\n"
+                    "   - Break down complex information into smaller, understandable parts.\n\n"
+                    "3. Add bullet points for each section with the following rules:\n"
+                    "   - Use numbered bullets for Headings.\n"
+                    "   - Use '☆' for Sub-headings.\n"
+                    "   - Use '●' for Points.\n"
+                    "   - Use '⭘' for Key Points.\n"
+                    "   - Use '◊' for Sub-Points.\n\n"
+                    "4. Highlight important words or phrases in each line using **bold formatting**.\n"
+                    "   - Ensure that highlighted words add clarity or emphasize critical information.\n\n"
+                    "Finally, ensure the output is cleanly structured and well-formatted while preserving the meaning of the original content:\n\n"
+                    + ocr_text
                 )
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": formatted_prompt}
-                    ],
-                    temperature=0.5,
+                model = genai.GenerativeModel(
+                    model_name="gemini-pro"
                 )
-                notes_text = response["choices"][0]["message"]["content"]
+                response = model.generate_content([formatted_prompt])
+                notes_text = response.text
 
                 # Add notes text to Word document with specified formatting and minimal spacing
                 lines = notes_text.split("\n")
@@ -75,7 +84,7 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.bold = True
                         run.font.size = Pt(28)
                         run.font.name = 'Baskerville Old Face'
-                        run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+                        run.font.color.rgb = RGBColor(255, 165, 0)  # Green
 
                     elif line.startswith("***"):
                         # H2 Heading formatting with slight indent
