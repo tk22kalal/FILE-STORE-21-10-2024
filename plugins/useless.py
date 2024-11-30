@@ -1,4 +1,5 @@
 from bot import Bot
+import openai
 from pyrogram.types import Message
 from pyrogram import filters
 from pyrogram import Client
@@ -13,6 +14,7 @@ import asyncio
 import re
 
 # Configure Google Gemini API and Vision
+openai.api_key = "your_openai_api_key"
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
@@ -49,11 +51,12 @@ async def pdf_handler(client: Client, message: Message):
                     "Replace * and - with bulletins according to the above bulletin arrangement. Use ### for main title, *** for headings, ## for subheadings, "
                     "and - for normal paragraph key points:\n\n" + ocr_text
                 )
-                model = genai.GenerativeModel(
-                    model_name="gemini-pro"
+                response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.5,
                 )
-                response = model.generate_content([formatted_prompt])
-                notes_text = response.text
+                notes_text = response["choices"][0]["message"]["content"]
 
                 # Add notes text to Word document with specified formatting and minimal spacing
                 lines = notes_text.split("\n")
