@@ -53,7 +53,7 @@ async def pdf_handler(client: Client, message: Message):
                 )
                 response = openai.ChatCompletion.create(
                     model="gpt-4",
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[{"role": "user", "content": formatted_prompt}],
                     temperature=0.5,
                 )
                 notes_text = response["choices"][0]["message"]["content"]
