@@ -8,7 +8,6 @@ from google.cloud import vision
 import google.generativeai as genai
 from docx import Document
 from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 import pdf2image
 import asyncio
 import re
@@ -22,8 +21,8 @@ vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/g
 async def pdf_handler(client: Client, message: Message):
     """Handle PDF uploads, extract text via OCR, convert to notes format, and send as a formatted Word document."""
     if message.document.file_name.endswith(".pdf"):
-        # Send temporary "Processing..." message
-        processing_message = await client.send_message(chat_id=message.chat.id, text="Processing...")
+        # Send a temporary "Processing..." message
+        processing_message = await client.send_message(chat_id=message.chat.id, text="Processing... 0%")
 
         file_id = message.document.file_id
         file = await client.download_media(file_id)
@@ -31,18 +30,24 @@ async def pdf_handler(client: Client, message: Message):
         document = Document()
 
         try:
-            # Convert each page to image and perform OCR
+            # Convert each page to an image and perform OCR
             images = pdf2image.convert_from_path(file, dpi=300)
-            for page_num, image in enumerate(images):
+            total_pages = len(images)
+
+            for page_num, image in enumerate(images, start=1):
+                # Update the progress percentage
+                progress = int((page_num / total_pages) * 100)
+                await processing_message.edit_text(f"Processing... {progress}%")
+
+                # Process the current page
                 image_bytes = io.BytesIO()
                 image.save(image_bytes, format='JPEG')
                 vision_image = vision.Image(content=image_bytes.getvalue())
                 
                 ocr_response = vision_client.text_detection(image=vision_image)
                 ocr_text = ocr_response.full_text_annotation.text
-
-                # Generate notes format using Gemini AI for the current page
-                                # Generate notes format using Gemini AI for the current page
+                
+                # Generate notes using Gemini API
                 formatted_prompt = (
                     "Analyze the following content and perform the following tasks step by step:\n\n"
                     "1. Identify and extract the **Main Title**, **Headings**, **Sub-headings**, and the structure of the content. Clearly mark each section using:\n"
@@ -50,7 +55,7 @@ async def pdf_handler(client: Client, message: Message):
                     "   - Use '***' for Headings.\n"
                     "   - Use '##' for Sub-headings.\n"
                     "   - Use '-' for normal paragraph key points.\n\n"
-                    "2. Simplify and Explain the content into **point-wise format** under each identified section, while maintaining the **original meaning**.\n"
+                    "2. Simplify and explain the content into **point-wise format** under each identified section, while maintaining the **original meaning**.\n"
                     "   - Organize the points clearly and concisely.\n"
                     "   - Break down complex information into smaller, understandable parts.\n\n"
                     "3. Ensure all **formulas**, **tables**, **cycles**, and **mind maps** are preserved **as they are** without modification or simplification.\n\n"
@@ -65,13 +70,11 @@ async def pdf_handler(client: Client, message: Message):
                     "Finally, ensure the output is cleanly structured and well-formatted while preserving the meaning of the original content:\n\n"
                     + ocr_text
                 )
-                model = genai.GenerativeModel(
-                    model_name="gemini-pro"
-                )
+                model = genai.GenerativeModel(model_name="gemini-pro")
                 response = model.generate_content([formatted_prompt])
                 notes_text = response.text
 
-                # Add notes text to Word document with specified formatting and minimal spacing
+                # Add the notes to the Word document with formatting
                 lines = notes_text.split("\n")
                 for line in lines:
                     if line.startswith("###"):
@@ -151,12 +154,13 @@ async def pdf_handler(client: Client, message: Message):
                         run = paragraph.add_run(part)
                     run.font.size = Pt(13)
                     run.font.name = 'Tahoma'
-
-            # Save Word document
+                    
+            # Save the Word document
             word_file = io.BytesIO()
             document.save(word_file)
             word_file.seek(0)
 
+            # Send the Word document back to the user
             await client.send_document(
                 chat_id=message.chat.id,
                 document=word_file,
@@ -164,12 +168,13 @@ async def pdf_handler(client: Client, message: Message):
                 caption="Here are your notes in a structured Microsoft Word format."
             )
 
-            # Delete temporary processing message
-            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.id])
+            # Delete the temporary processing message
+            await processing_message.delete()
 
         except Exception as e:
             await message.reply("Error processing the PDF. Please try again.")
             print(f"Error processing PDF: {e}")
-            await client.delete_messages(chat_id=message.chat.id, message_ids=[processing_message.id])
+            await processing_message.delete()
+
     else:
-        await message.reply("Please upload a PDF document.")
+        await message.reply("Please upload a valid PDF document.")
