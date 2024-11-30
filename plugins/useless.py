@@ -14,7 +14,7 @@ import asyncio
 import re
 
 # Configure Google Gemini API and Vision
-openai.api_key = "your_openai_api_key"
+openai.api_key = "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"
 genai.configure(api_key="AIzaSyCL_5XEd39cgAdcIBLhbu9OaT-RrhSSSjI")
 vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/gen-lang-client-0707503202-21d07fd84f57.json")
 
