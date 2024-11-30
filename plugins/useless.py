@@ -50,7 +50,7 @@ async def pdf_handler(client: Client, message: Message):
                     "and - for normal paragraph key points:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
-                    model_name="gemini-pro-1.5"
+                    model_name="gemini-pro"
                 )
                 response = model.generate_content([formatted_prompt])
                 notes_text = response.text
