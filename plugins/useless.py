@@ -50,7 +50,7 @@ async def pdf_handler(client: Client, message: Message):
                     "and - for normal paragraph key points:\n\n" + ocr_text
                 )
                 model = genai.GenerativeModel(
-                    model_name="gemini-pro"
+                    model_name="gemini-pro-1.5"
                 )
                 response = model.generate_content([formatted_prompt])
                 notes_text = response.text
@@ -60,7 +60,7 @@ async def pdf_handler(client: Client, message: Message):
                 for line in lines:
                     if line.startswith("###"):
                         # Main Heading formatting with zero left indent
-                        heading = document.add_paragraph()
+                        heading = document.add_paragraph(style='Title')
                         heading_format = heading.paragraph_format
                         heading_format.left_indent = Pt(0)
                         heading_format.space_before = Pt(0)
@@ -69,7 +69,7 @@ async def pdf_handler(client: Client, message: Message):
                         run.font.bold = True
                         run.font.size = Pt(28)
                         run.font.name = 'Baskerville Old Face'
-                        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        run.font.color.rgb = RGBColor(0, 128, 0)  # Green
 
                     elif line.startswith("***"):
                         # H2 Heading formatting with slight indent
