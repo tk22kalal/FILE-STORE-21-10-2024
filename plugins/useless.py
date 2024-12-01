@@ -77,7 +77,7 @@ async def pdf_handler(client: Client, message: Message):
                 completion = groq_client.chat.completions.create(
                     model="llama-3.1-70b-versatile",
                     messages=[
-                        {"role": "system", "content": "You are an expert assistant that structures and simplifies content."},
+                        {"role": "system", "content": "You are an expert assistant that structures and simplifies content and make notes."},
                         {"role": "user", "content": formatted_prompt}
                     ]
                 )
