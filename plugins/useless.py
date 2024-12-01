@@ -71,7 +71,7 @@ async def pdf_handler(client: Client, message: Message):
                     "Finally, ensure the output is cleanly structured and well-formatted while preserving the meaning of the original content:\n\n"
                     + ocr_text
                 )
-                client = Groq()
+                client = Groq(api_key="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")
 
                 # Generate the completion
                 completion = client.chat.completions.create(
