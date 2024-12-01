@@ -35,3 +35,4 @@ PyPDF2
 pdf2image
 requests
 python-docx
+groq
