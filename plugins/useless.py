@@ -11,6 +11,7 @@ from docx.shared import Pt, RGBColor
 import pdf2image
 import asyncio
 import re
+from groq import Groq
 
 # Configure Google Gemini API and Vision
 openai.api_key = "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"
@@ -70,9 +71,19 @@ async def pdf_handler(client: Client, message: Message):
                     "Finally, ensure the output is cleanly structured and well-formatted while preserving the meaning of the original content:\n\n"
                     + ocr_text
                 )
-                model = genai.GenerativeModel(model_name="gemini-pro")
-                response = model.generate_content([formatted_prompt])
-                notes_text = response.text
+                client = Groq()
+
+                # Generate the completion
+                completion = client.chat.completions.create(
+                    model="llama-3.1-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "You are an expert assistant that structures and simplifies content."},
+                        {"role": "user", "content": formatted_prompt}
+                    ]
+                )
+                
+                # Extract the generated text
+                notes_text = completion["choices"][0]["message"]["content"]
 
                 # Add the notes to the Word document with formatting
                 lines = notes_text.split("\n")
