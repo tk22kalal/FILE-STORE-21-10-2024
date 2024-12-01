@@ -56,7 +56,7 @@ async def pdf_handler(client: Client, message: Message):
                     "   - Use '***' for Headings.\n"
                     "   - Use '##' for Sub-headings.\n"
                     "   - Use '-' for normal paragraph key points.\n\n"
-                    "2. Simplify and explain the content into **point-wise format** under each identified section, while maintaining the **original meaning**.\n"
+                    "2. Simplify the content into **point-wise format** under each identified section, while maintaining the **original meaning**.\n"
                     "   - Organize the points clearly and concisely.\n"
                     "   - Break down complex information into smaller, understandable parts.\n\n"
                     "3. Ensure all **formulas**, **tables**, **cycles**, and **mind maps** are preserved **as they are** without modification or simplification.\n\n"
