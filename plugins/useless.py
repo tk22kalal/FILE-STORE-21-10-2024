@@ -71,19 +71,21 @@ async def pdf_handler(client: Client, message: Message):
                     "Finally, ensure the output is cleanly structured and well-formatted while preserving the meaning of the original content:\n\n"
                     + ocr_text
                 )
-                client = Groq(api_key="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")
+                groq_client = Groq(api_key="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")
 
                 # Generate the completion
-                completion = client.chat.completions.create(
+                completion = groq_client.chat.completions.create(
                     model="llama-3.1-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are an expert assistant that structures and simplifies content."},
                         {"role": "user", "content": formatted_prompt}
                     ]
                 )
-                
-                # Extract the generated text
-                notes_text = completion["choices"][0]["message"]["content"]
+                if hasattr(completion, "choices"):
+                    notes_text = completion.choices[0].message.content
+                else:
+                    raise ValueError("Unexpected response structure from Groq API.")
+                                
 
                 # Add the notes to the Word document with formatting
                 lines = notes_text.split("\n")
