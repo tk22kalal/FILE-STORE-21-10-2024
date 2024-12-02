@@ -36,3 +36,10 @@ pdf2image
 requests
 python-docx
 groq
+
+black
+flake8
+isort
+fpdf
+Pillow
+pdf2image
