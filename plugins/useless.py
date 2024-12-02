@@ -17,7 +17,7 @@ groq_client = Groq(api_key="gsk_gYEvJuziW5HlahABp4QrWGdyb3FYt92BZUbIsLSmc8RkMAUt
 
 
 # Function to generate handwritten PDF
-def generate_handwritten_pdf_with_lines(text, font_path="plugins/DancingScript-Variable.ttf"):
+def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwritingStdRg.TTF"):
     font_size = 24
     page_width, page_height = 1200, 1600
     margin = 50
