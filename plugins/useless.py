@@ -17,20 +17,25 @@ groq_client = Groq(api_key="gsk_gYEvJuziW5HlahABp4QrWGdyb3FYt92BZUbIsLSmc8RkMAUt
 
 
 # Function to generate handwritten PDF
-def generate_handwritten_pdf(text, font_path="plugins/DancingScript-Variable.ttf"):
+def generate_handwritten_pdf_with_lines(text, font_path="plugins/DancingScript-Variable.ttf"):
     font_size = 24
     page_width, page_height = 1200, 1600
     margin = 50
     line_spacing = 50
+    line_color = "lightblue"  # Color of the lines on the paper
 
     font = ImageFont.truetype(font_path, font_size)
     images = []
 
-    # Create pages with handwritten-style text
+    # Create pages with lined background
     lines = text.split("\n")
     current_height = margin
     page = Image.new("RGB", (page_width, page_height), "white")
     draw = ImageDraw.Draw(page)
+
+    # Draw horizontal lines for the lined paper effect
+    for y in range(margin, page_height - margin, line_spacing):
+        draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
     for line in lines:
         if current_height + line_spacing > page_height - margin:
@@ -38,8 +43,14 @@ def generate_handwritten_pdf(text, font_path="plugins/DancingScript-Variable.ttf
             images.append(page)
             page = Image.new("RGB", (page_width, page_height), "white")
             draw = ImageDraw.Draw(page)
+
+            # Draw horizontal lines for the new page
+            for y in range(margin, page_height - margin, line_spacing):
+                draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
+
             current_height = margin
 
+        # Add text to the page
         draw.text((margin, current_height), line, font=font, fill="black")
         current_height += line_spacing
 
@@ -103,7 +114,7 @@ async def pdf_handler(client: Client, message: Message):
             await asyncio.sleep(1)  # Prevent rate-limiting issues
 
         # Generate handwritten notes PDF
-        handwritten_pdf_path = generate_handwritten_pdf(all_notes_text)
+        handwritten_pdf_path = generate_handwritten_pdf_with_lines(all_notes_text)
 
         # Send the handwritten PDF back to the user
         await client.send_document(
