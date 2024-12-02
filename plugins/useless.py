@@ -27,10 +27,7 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     font = ImageFont.truetype(font_path, font_size)
     images = []
 
-    # Split text into words for wrapping
-    words = text.split()
     current_height = margin
-    current_line = ""
     page = Image.new("RGB", (page_width, page_height), "white")
     draw = ImageDraw.Draw(page)
 
@@ -38,35 +35,54 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     for y in range(margin, page_height - margin, line_spacing):
         draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
-    for word in words:
-        # Test adding the next word to the current line
-        test_line = f"{current_line} {word}".strip()
-        text_width = font.getbbox(test_line)[2]  # Use getbbox to calculate text width
+    lines = text.splitlines()  # Split text into lines for preserving formatting
 
-        if text_width <= page_width - 2 * margin:
-            current_line = test_line
-        else:
-            # Render the current line and reset
+    for line in lines:
+        words = line.split()  # Split line into words
+        current_line = ""
+
+        for word in words:
+            # Test adding the next word to the current line
+            test_line = f"{current_line} {word}".strip()
+            text_width = font.getbbox(test_line)[2]  # Calculate text width
+
+            if text_width <= page_width - 2 * margin:
+                current_line = test_line
+            else:
+                # Draw the current line and reset
+                draw.text((margin, current_height), current_line, font=font, fill="black")
+                current_height += line_spacing
+
+                # Start a new page if content exceeds page height
+                if current_height + line_spacing > page_height - margin:
+                    images.append(page)
+                    page = Image.new("RGB", (page_width, page_height), "white")
+                    draw = ImageDraw.Draw(page)
+
+                    # Draw lines on the new page
+                    for y in range(margin, page_height - margin, line_spacing):
+                        draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
+
+                    current_height = margin
+
+                # Start a new line with the current word
+                current_line = word
+
+        # Draw the last line of the paragraph
+        if current_line:
             draw.text((margin, current_height), current_line, font=font, fill="black")
             current_height += line_spacing
 
-            # Start a new page if the content exceeds the page height
+            # Start a new page if content exceeds page height
             if current_height + line_spacing > page_height - margin:
                 images.append(page)
                 page = Image.new("RGB", (page_width, page_height), "white")
                 draw = ImageDraw.Draw(page)
 
-                # Draw lines on the new page
                 for y in range(margin, page_height - margin, line_spacing):
                     draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
                 current_height = margin
-
-            current_line = word
-
-    # Render the last line
-    if current_line:
-        draw.text((margin, current_height), current_line, font=font, fill="black")
 
     # Add the last page to the images list
     images.append(page)
