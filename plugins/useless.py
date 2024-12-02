@@ -17,7 +17,7 @@ groq_client = Groq(api_key="gsk_gYEvJuziW5HlahABp4QrWGdyb3FYt92BZUbIsLSmc8RkMAUt
 
 
 # Function to generate handwritten PDF
-def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwritingStdRg.TTF"):
+def generate_handwritten_pdf_with_lines(text, font_path="plugins/DancingScript-Variable.ttf"):
     font_size = 24
     page_width, page_height = 1200, 1600
     margin = 50
@@ -28,8 +28,9 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     images = []
 
     # Create pages with lined background
-    lines = text.split("\n")
+    words = text.split()  # Split text into words for proper wrapping
     current_height = margin
+    current_line = ""
     page = Image.new("RGB", (page_width, page_height), "white")
     draw = ImageDraw.Draw(page)
 
@@ -37,22 +38,37 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     for y in range(margin, page_height - margin, line_spacing):
         draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
-    for line in lines:
-        if current_height + line_spacing > page_height - margin:
-            # Save the current page and start a new one
-            images.append(page)
-            page = Image.new("RGB", (page_width, page_height), "white")
-            draw = ImageDraw.Draw(page)
+    for word in words:
+        # Calculate the width of the current line with the new word
+        test_line = f"{current_line} {word}".strip()
+        text_width, _ = draw.textsize(test_line, font=font)
 
-            # Draw horizontal lines for the new page
-            for y in range(margin, page_height - margin, line_spacing):
-                draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
+        if text_width <= page_width - 2 * margin:
+            # Add the word to the current line if it fits
+            current_line = test_line
+        else:
+            # Draw the current line and move to the next
+            draw.text((margin, current_height), current_line, font=font, fill="black")
+            current_height += line_spacing
 
-            current_height = margin
+            # Start a new page if the content exceeds the page height
+            if current_height + line_spacing > page_height - margin:
+                images.append(page)
+                page = Image.new("RGB", (page_width, page_height), "white")
+                draw = ImageDraw.Draw(page)
 
-        # Add text to the page
-        draw.text((margin, current_height), line, font=font, fill="black")
-        current_height += line_spacing
+                # Draw horizontal lines for the new page
+                for y in range(margin, page_height - margin, line_spacing):
+                    draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
+
+                current_height = margin
+
+            # Start a new line with the current word
+            current_line = word
+
+    # Draw the last line if it exists
+    if current_line:
+        draw.text((margin, current_height), current_line, font=font, fill="black")
 
     # Add the last page
     images.append(page)
