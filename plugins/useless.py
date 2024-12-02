@@ -74,7 +74,7 @@ async def pdf_handler(client: Client, message: Message):
 
             # Generate handwritten text images
             images = []
-            font_path = "path/to/your/handwriting-font.ttf"  # Replace with the path to your handwriting font
+            font_path = "plugins/DancingScript-Variable.ttf"  # Replace with the path to your handwriting font
             font = ImageFont.truetype(font_path, size=24)
 
             for page_text in all_notes_text.split("\n\nPage"):
