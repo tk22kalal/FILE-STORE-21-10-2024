@@ -41,7 +41,7 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     for word in words:
         # Test adding the next word to the current line
         test_line = f"{current_line} {word}".strip()
-        text_width, _ = font.getsize(test_line)
+        text_width = font.getbbox(test_line)[2]  # Use getbbox to calculate text width
 
         if text_width <= page_width - 2 * margin:
             current_line = test_line
@@ -75,7 +75,6 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     images[0].save(pdf_path, save_all=True, append_images=images[1:])
     return pdf_path
-
 
 # Pyrogram handler for processing PDF files
 @Client.on_message(filters.document)
