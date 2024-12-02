@@ -16,38 +16,37 @@ vision_client = vision.ImageAnnotatorClient.from_service_account_file("plugins/g
 groq_client = Groq(api_key="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")
 
 
-# Function to generate handwritten PDF
+# Function to generate handwritten PDF on lined paper
 def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwritingStdRg.TTF"):
     font_size = 24
     page_width, page_height = 1200, 1600
     margin = 50
     line_spacing = 50
-    line_color = "lightblue"  # Color of the lines on the paper
+    line_color = "lightblue"
 
     font = ImageFont.truetype(font_path, font_size)
     images = []
 
-    # Create pages with lined background
-    words = text.split()  # Split text into words for proper wrapping
+    # Split text into words for wrapping
+    words = text.split()
     current_height = margin
     current_line = ""
     page = Image.new("RGB", (page_width, page_height), "white")
     draw = ImageDraw.Draw(page)
 
-    # Draw horizontal lines for the lined paper effect
+    # Draw lined paper background
     for y in range(margin, page_height - margin, line_spacing):
         draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
     for word in words:
-        # Calculate the width of the current line with the new word
+        # Test adding the next word to the current line
         test_line = f"{current_line} {word}".strip()
-        text_width, _ = draw.textsize(test_line, font=font)
+        text_width, _ = font.getsize(test_line)
 
         if text_width <= page_width - 2 * margin:
-            # Add the word to the current line if it fits
             current_line = test_line
         else:
-            # Draw the current line and move to the next
+            # Render the current line and reset
             draw.text((margin, current_height), current_line, font=font, fill="black")
             current_height += line_spacing
 
@@ -57,30 +56,28 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
                 page = Image.new("RGB", (page_width, page_height), "white")
                 draw = ImageDraw.Draw(page)
 
-                # Draw horizontal lines for the new page
+                # Draw lines on the new page
                 for y in range(margin, page_height - margin, line_spacing):
                     draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
                 current_height = margin
 
-            # Start a new line with the current word
             current_line = word
 
-    # Draw the last line if it exists
+    # Render the last line
     if current_line:
         draw.text((margin, current_height), current_line, font=font, fill="black")
 
-    # Add the last page
+    # Add the last page to the images list
     images.append(page)
 
-    # Save pages as a PDF
+    # Save images as a PDF
     pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     images[0].save(pdf_path, save_all=True, append_images=images[1:])
-
     return pdf_path
 
 
-# Pyrogram handler
+# Pyrogram handler for processing PDF files
 @Client.on_message(filters.document)
 async def pdf_handler(client: Client, message: Message):
     if not message.document.file_name.endswith(".pdf"):
@@ -102,16 +99,16 @@ async def pdf_handler(client: Client, message: Message):
             progress = int((page_num / total_pages) * 100)
             await processing_message.edit_text(f"Processing... {progress}%")
 
-            # Convert image to bytes
+            # Convert image to bytes for OCR
             image_bytes = io.BytesIO()
-            image.save(image_bytes, format='JPEG')
+            image.save(image_bytes, format="JPEG")
 
-            # Perform OCR
+            # Perform OCR using Google Vision API
             vision_image = vision.Image(content=image_bytes.getvalue())
             ocr_response = vision_client.text_detection(image=vision_image)
             ocr_text = ocr_response.full_text_annotation.text
 
-            # Generate structured notes with Groq AI
+            # Generate structured notes using Groq AI
             formatted_prompt = f"Summarize and create notes for the following content:\n\n{ocr_text}"
             completion = groq_client.chat.completions.create(
                 model="llama-3.1-70b-versatile",
@@ -127,12 +124,12 @@ async def pdf_handler(client: Client, message: Message):
             else:
                 raise ValueError("Unexpected response from Groq API.")
 
-            await asyncio.sleep(1)  # Prevent rate-limiting issues
+            await asyncio.sleep(1)  # Avoid rate-limiting issues
 
-        # Generate handwritten notes PDF
+        # Generate handwritten-style PDF
         handwritten_pdf_path = generate_handwritten_pdf_with_lines(all_notes_text)
 
-        # Send the handwritten PDF back to the user
+        # Send the handwritten PDF to the user
         await client.send_document(
             chat_id=message.chat.id,
             document=handwritten_pdf_path,
@@ -145,9 +142,9 @@ async def pdf_handler(client: Client, message: Message):
         print(f"Error processing PDF: {e}")
 
     finally:
-        # Cleanup
+        # Cleanup temporary files
         await processing_message.delete()
         if os.path.exists(pdf_file_path):
             os.remove(pdf_file_path)
-        if os.path.exists(handwritten_pdf_path):
+        if "handwritten_pdf_path" in locals() and os.path.exists(handwritten_pdf_path):
             os.remove(handwritten_pdf_path)
