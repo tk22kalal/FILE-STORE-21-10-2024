@@ -17,6 +17,9 @@ groq_client = Groq(api_key="gsk_gYEvJuziW5HlahABp4QrWGdyb3FYt92BZUbIsLSmc8RkMAUt
 
 
 # Function to generate handwritten PDF on lined paper
+from PIL import Image, ImageDraw, ImageFont
+import tempfile
+
 def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwritingStdRg.TTF"):
     font_size = 24
     page_width, page_height = 1200, 1600
@@ -24,21 +27,38 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
     line_spacing = 50
     line_color = "lightblue"
 
+    # Load the font
     font = ImageFont.truetype(font_path, font_size)
     images = []
 
+    # Initialize the first page
     current_height = margin
     page = Image.new("RGB", (page_width, page_height), "white")
     draw = ImageDraw.Draw(page)
 
-    # Draw lined paper background
+    # Draw the lined paper background
     for y in range(margin, page_height - margin, line_spacing):
         draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
 
-    lines = text.splitlines()  # Split text into lines for preserving formatting
+    lines = text.splitlines()  # Split text into lines, preserving original formatting and blank lines
 
     for line in lines:
-        words = line.split()  # Split line into words
+        # Blank line handling: Increase height and skip text drawing
+        if not line.strip():
+            current_height += line_spacing
+            if current_height + line_spacing > page_height - margin:
+                images.append(page)
+                page = Image.new("RGB", (page_width, page_height), "white")
+                draw = ImageDraw.Draw(page)
+
+                # Draw lines on the new page
+                for y in range(margin, page_height - margin, line_spacing):
+                    draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
+                current_height = margin
+            continue
+
+        # Split the line into words for text wrapping
+        words = line.split()
         current_line = ""
 
         for word in words:
@@ -49,11 +69,11 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
             if text_width <= page_width - 2 * margin:
                 current_line = test_line
             else:
-                # Draw the current line and reset
+                # Draw the current line on the page
                 draw.text((margin, current_height), current_line, font=font, fill="black")
                 current_height += line_spacing
 
-                # Start a new page if content exceeds page height
+                # Check for page overflow
                 if current_height + line_spacing > page_height - margin:
                     images.append(page)
                     page = Image.new("RGB", (page_width, page_height), "white")
@@ -62,32 +82,31 @@ def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwriti
                     # Draw lines on the new page
                     for y in range(margin, page_height - margin, line_spacing):
                         draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
-
                     current_height = margin
 
                 # Start a new line with the current word
                 current_line = word
 
-        # Draw the last line of the paragraph
+        # Draw the last line of the current paragraph
         if current_line:
             draw.text((margin, current_height), current_line, font=font, fill="black")
             current_height += line_spacing
 
-            # Start a new page if content exceeds page height
+            # Check for page overflow
             if current_height + line_spacing > page_height - margin:
                 images.append(page)
                 page = Image.new("RGB", (page_width, page_height), "white")
                 draw = ImageDraw.Draw(page)
 
+                # Draw lines on the new page
                 for y in range(margin, page_height - margin, line_spacing):
                     draw.line([(margin, y), (page_width - margin, y)], fill=line_color, width=2)
-
                 current_height = margin
 
     # Add the last page to the images list
     images.append(page)
 
-    # Save images as a PDF
+    # Save all pages as a PDF
     pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
     images[0].save(pdf_path, save_all=True, append_images=images[1:])
     return pdf_path
