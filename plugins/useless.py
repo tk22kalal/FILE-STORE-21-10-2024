@@ -20,7 +20,7 @@ groq_client = Groq(api_key="gsk_gYEvJuziW5HlahABp4QrWGdyb3FYt92BZUbIsLSmc8RkMAUt
 from PIL import Image, ImageDraw, ImageFont
 import tempfile
 
-def generate_handwritten_pdf_with_lines(text, font_path="plugins/LucidaHandwritingStdRg.TTF"):
+def generate_handwritten_pdf_with_lines(text, font_path="plugins/comici.ttf"):
     font_size = 24
     page_width, page_height = 1200, 1600
     margin = 50
