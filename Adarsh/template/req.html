@@ -59,16 +59,16 @@
             'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay',
             'download', 'fullscreen'
         ];
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             const player = Plyr.setup('.player', { controls });
 
-            // Request full-screen on page load
+            // Request full-screen on page load for Telegram Mini App
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen();
             } else if (document.documentElement.mozRequestFullScreen) { // Firefox
                 document.documentElement.mozRequestFullScreen();
-            } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari and Opera
+            } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari, Opera
                 document.documentElement.webkitRequestFullscreen();
             } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
                 document.documentElement.msRequestFullscreen();
