@@ -53,48 +53,27 @@
     </p>	     
     </footer>
     <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
-	<script>
+    <script>
         const controls = [
-              'play-large',
-              'rewind',
-              'play', 
-              'fast-forward', 
-              'progress', 
-              'current-time',
-              'duration',
-              'mute',
-              'volume',
-              'captions',
-              'settings',
-              'pip',
-              'airplay',
-              'download',
-              'fullscreen'
-            ];
+            'play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time',
+            'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay',
+            'download', 'fullscreen'
+        ];
+        
         document.addEventListener('DOMContentLoaded', () => {
             const player = Plyr.setup('.player', { controls });
+
+            // Request full-screen on page load
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) { // Firefox
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
+                document.documentElement.msRequestFullscreen();
+            }
         });
-
-        const body = document.querySelector('body');
-        const footer = document.querySelector('footer');
-        const toogle = document.querySelector('.toogle');
     </script>
-<script>
-	// Trigger full-screen mode when a button is clicked
-document.getElementById('fullscreenButton').addEventListener('click', () => {
-    window.Telegram.WebApp.requestFullscreen();
-});
-
-// Handle full-screen mode changes
-window.Telegram.WebApp.onEvent('fullscreenChanged', (isFullscreen) => {
-    if (isFullscreen) {
-        // Adjust UI or content for full-screen mode
-        console.log('Full-screen mode activated');
-    } else {
-        // Restore UI or content to normal mode
-        console.log('Full-screen mode deactivated');
-    }
-});
-</script>
 </body>
 </html>
