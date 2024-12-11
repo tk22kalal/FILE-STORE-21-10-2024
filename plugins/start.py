@@ -80,8 +80,7 @@ async def start_command(client: Client, message: Message):
         await temp_msg.delete()
 
         for msg in messages:
-        # Clean the caption to remove any text with @ and #
-        
+                
         original_caption = "" if not msg.caption else msg.caption.html
         cleaned_caption = re.sub(r'(\s|^)@[\w_]+', '', original_caption)
         cleaned_caption = re.sub(r'(\s|^)#[\w_]+', '', cleaned_caption).strip()
