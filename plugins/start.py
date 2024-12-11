@@ -79,76 +79,76 @@ async def start_command(client: Client, message: Message):
             return
         await temp_msg.delete()
 
-
         for msg in messages:
-            # Clean the caption to remove any text with @ and #
-            original_caption = "" if not msg.caption else msg.caption.html
-            cleaned_caption = re.sub(r'(\s|^)@[\w_]+', '', original_caption)
-            cleaned_caption = re.sub(r'(\s|^)#[\w_]+', '', cleaned_caption).strip()
-            
-            # Add @mynextpulse to the caption
-            caption = (
-                CUSTOM_CAPTION.format(previouscaption=cleaned_caption, filename=msg.document.file_name)
-                if CUSTOM_CAPTION and msg.document else 
-                cleaned_caption
-            ) + "\n@mynextpulse"
-
-            if DISABLE_CHANNEL_BUTTON:
-                reply_markup = msg.reply_markup
-            else:
-                reply_markup = None
-
+        # Clean the caption to remove any text with @ and #
+        original_caption = "" if not msg.caption else msg.caption.html
+        cleaned_caption = re.sub(r'(\s|^)@[\w_]+', '', original_caption)
+        cleaned_caption = re.sub(r'(\s|^)#[\w_]+', '', cleaned_caption).strip()
+    
+        # Add @mynextpulse to the caption
+        caption = (
+            CUSTOM_CAPTION.format(previouscaption=cleaned_caption, filename=msg.document.file_name)
+            if CUSTOM_CAPTION and msg.document else
+            cleaned_caption
+        ) + "\n@mynextpulse"
+    
+        if DISABLE_CHANNEL_BUTTON:
+            reply_markup = msg.reply_markup
+        else:
+            reply_markup = None
+    
+        try:
+            snt_msg = await msg.copy(
+                chat_id=message.from_user.id,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                protect_content=PROTECT_CONTENT
+            )
+    
+            # Add streaming feature
+            x = None  # Initialize x with a default value
             try:
-                snt_msg = await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=reply_markup,
-                    protect_content=PROTECT_CONTENT
+                log_msg = await msg.forward(chat_id=Var.BIN_CHANNEL)
+                stream_link = f"{Var.URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+                online_link = f"{Var.URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+    
+                msg_text = """
+    <b> INSTRUCTIONS- <a href='https://telegra.ph/INSTRUCTIONS-08-03-3'>Click Here</a> </b>"""
+    
+                x = await message.reply_text(
+                    text=msg_text.format(get_name(log_msg), humanbytes(get_media_file_size(msg)), online_link, stream_link),
+                    quote=True,
+                    protect_content=PROTECT_CONTENT,
+                    disable_web_page_preview=True,
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton('📥  ᴅᴏᴡɴʟᴏᴀᴅ  📥', url=online_link)],
+                        [InlineKeyboardButton('🌐 Open Website', web_app=WebAppInfo(url=stream_link))],
+                        [InlineKeyboardButton('🌐 Open Website', web_app=WebAppInfo(url=stream_link, fullscreen=True))]
+                    ])
                 )
-
-                # Add streaming feature
-                try:
-                    log_msg = await msg.forward(chat_id=Var.BIN_CHANNEL)
-                    stream_link = f"{Var.URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                    online_link = f"{Var.URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-                    
-                    
-                    msg_text ="""
-<b> INSTRUCTIONS- <a href='https://telegra.ph/INSTRUCTIONS-08-03-3'>Click Here</a> </b>"""
-
-                    x = await message.reply_text(
-                        text=msg_text.format(get_name(log_msg), humanbytes(get_media_file_size(msg)), online_link, stream_link),
-                        quote=True,
-                        protect_content=PROTECT_CONTENT,
-                        disable_web_page_preview=True,
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton('📥  ᴅᴏᴡɴʟᴏᴀᴅ  📥', url=online_link)],
-                            [InlineKeyboardButton('🌐 Open Website', web_app=WebAppInfo(url=stream_link))],
-                            [InlineKeyboardButton('🌐 Open Website', web_app=WebAppInfo(url=stream_link, fullscreen=True))]
-                        ])
-                    )
-            
-                except FloodWait as e:
-                    print(f"Sleeping for {str(e.x)}s")
-                    await asyncio.sleep(e.x)
-                    await client.send_message(
-                        chat_id=Var.BIN_CHANNEL,
-                        text=f"Gᴏᴛ FʟᴏᴏᴅWᴀɪᴛ ᴏғ {str(e.x)}s from [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n\n**𝚄𝚜𝚎𝚛 𝙸𝙳 :** `{str(message.from_user.id)}`",
-                        disable_web_page_preview=True
-                    )
-                except MessageIdInvalid as e:
-                    print(f"MessageIdInvalid: {e}")
-                    await message.reply_text("Failed to generate stream link due to invalid message ID.")
-                except ButtonUrlInvalid as e:
-                    print(f"ButtonUrlInvalid: {e}")
-                    await message.reply_text("Failed to generate stream link due to invalid button URL.")
-            except Exception as e:
-                print(f"Error copying message or generating stream link: {e}")
-
-
-        asyncio.create_task(schedule_deletion([snt_msg, x], SECONDS))
-
+    
+            except FloodWait as e:
+                print(f"Sleeping for {str(e.x)}s")
+                await asyncio.sleep(e.x)
+                await client.send_message(
+                    chat_id=Var.BIN_CHANNEL,
+                    text=f"Gᴏᴛ FʟᴏᴏᴅWᴀɪᴛ ᴏғ {str(e.x)}s from [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n\n**𝚄𝚜𝚎𝚛 𝙸𝙳 :** `{str(message.from_user.id)}`",
+                    disable_web_page_preview=True
+                )
+            except MessageIdInvalid as e:
+                print(f"MessageIdInvalid: {e}")
+                await message.reply_text("Failed to generate stream link due to invalid message ID.")
+            except ButtonUrlInvalid as e:
+                print(f"ButtonUrlInvalid: {e}")
+                await message.reply_text("Failed to generate stream link due to invalid button URL.")
+        except Exception as e:
+            print(f"Error copying message or generating stream link: {e}")
+    
+        # Ensure snt_msg and x are valid before scheduling deletion
+        if 'snt_msg' in locals() and snt_msg and x:
+            asyncio.create_task(schedule_deletion([snt_msg, x], SECONDS))
+    
         return
     else:
         reply_markup = InlineKeyboardMarkup(
