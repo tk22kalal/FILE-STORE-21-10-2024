@@ -79,5 +79,22 @@
         const footer = document.querySelector('footer');
         const toogle = document.querySelector('.toogle');
     </script>
+<script>
+	// Trigger full-screen mode when a button is clicked
+document.getElementById('fullscreenButton').addEventListener('click', () => {
+    window.Telegram.WebApp.requestFullscreen();
+});
+
+// Handle full-screen mode changes
+window.Telegram.WebApp.onEvent('fullscreenChanged', (isFullscreen) => {
+    if (isFullscreen) {
+        // Adjust UI or content for full-screen mode
+        console.log('Full-screen mode activated');
+    } else {
+        // Restore UI or content to normal mode
+        console.log('Full-screen mode deactivated');
+    }
+});
+</script>
 </body>
 </html>
