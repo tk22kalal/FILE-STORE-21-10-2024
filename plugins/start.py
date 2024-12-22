@@ -123,6 +123,7 @@ async def start_command(client: Client, message: Message):
                         protect_content=PROTECT_CONTENT,
                         disable_web_page_preview=True,
                         reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton('🎥  STREAM  🎥', url=stream_link)],
                             [InlineKeyboardButton('📥  ᴅᴏᴡɴʟᴏᴀᴅ  📥', url=online_link)]
                         ])
                     )
