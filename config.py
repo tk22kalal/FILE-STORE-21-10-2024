@@ -7,6 +7,8 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+import os
+os.environ["GIT_PYTHON_REFRESH"] = "quiet"  # Set in code
 
 
 #Bot token @Botfather
