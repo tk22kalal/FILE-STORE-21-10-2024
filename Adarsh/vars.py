@@ -26,7 +26,7 @@ class Var(object):
         APP_NAME = None
 
     # ── Fixed FQDN & URL (always use the same domain) ──────────────────────────
-    FQDN = "stram11.nextpulse.workers.dev"
+    FQDN = "stream11.nextpulse.workers.dev"
     HAS_SSL = True
     URL = f"https://{FQDN}/"
 
